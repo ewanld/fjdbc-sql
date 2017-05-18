@@ -18,11 +18,25 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.github.fjdbc.ConnectionProvider;
 import com.github.fjdbc.PreparedStatementBinder;
+import com.github.fjdbc.op.StatementOperation;
+import com.github.fjdbc.query.Query;
+import com.github.fjdbc.query.ResultSetExtractor;
 import com.github.fjdbc.util.IntSequence;
 
 public class OracleSql {
-	private static boolean debug;
+	final boolean debug;
+	final ConnectionProvider cnxProvider;
+
+	public OracleSql(ConnectionProvider cnxProvider) {
+		this(cnxProvider, false);
+	}
+
+	public OracleSql(ConnectionProvider cnxProvider, boolean debug) {
+		this.cnxProvider = cnxProvider;
+		this.debug = debug;
+	}
 
 	public SqlSelectBuilder select() {
 		final SqlSelectBuilder res = new SqlSelectBuilder();
@@ -82,12 +96,32 @@ public class OracleSql {
 	}
 
 	public CompositeSqlFragment union(SqlSelectBuilder... selects) {
-		return new CompositeSqlFragment(Arrays.asList(selects), " union ");
+		return new CompositeSqlFragment(Arrays.asList(selects), "union\n");
+	}
+
+	public CompositeSqlFragment unionAll(SqlSelectBuilder... selects) {
+		return new CompositeSqlFragment(Arrays.asList(selects), "union all\n");
+	}
+
+	public CompositeSqlFragment intersect(SqlSelectBuilder... selects) {
+		return new CompositeSqlFragment(Arrays.asList(selects), "intersect\n");
+	}
+
+	public CompositeSqlFragment minus(SqlSelectBuilder a, SqlSelectBuilder b) {
+		return new CompositeSqlFragment(Arrays.asList(a, b), "minus\n");
 	}
 
 	public enum RelationalOperator implements SqlFragment {
-		EQ("="), NOT_EQ("<>"), GT(">"), GTE(">="), LT("<"), LTE("<="), LIKE("like"), IS("is"), IS_NOT("is not"), IN(
-				"in");
+		EQ("="),
+		NOT_EQ("<>"),
+		GT(">"),
+		GTE(">="),
+		LT("<"),
+		LTE("<="),
+		LIKE("like"),
+		IS("is"),
+		IS_NOT("is not"),
+		IN("in");
 
 		private final String value;
 
@@ -231,7 +265,7 @@ public class OracleSql {
 		}
 	}
 
-	public static class SqlLiteral<T> implements SqlFragment {
+	public class SqlLiteral<T> implements SqlFragment {
 		private final T value;
 		private final Class<T> type;
 		private final String sql;
@@ -250,7 +284,7 @@ public class OracleSql {
 		@Override
 		public void appendTo(SqlStringBuilder w) {
 			w.append(sql);
-			if (OracleSql.isDebug()) {
+			if (debug) {
 				w.append("  /* ");
 				w.append(OracleSqlUtils.escapeComment(value.toString()));
 				w.append(" */");
@@ -293,7 +327,7 @@ public class OracleSql {
 	 * @param <P>
 	 *            the parent type
 	 */
-	public static class ExpressionBuilder<P> implements SqlFragment {
+	public class ExpressionBuilder<P> implements SqlFragment {
 		private SqlFragment wrapped;
 		private final P parent;
 
@@ -527,7 +561,7 @@ public class OracleSql {
 
 	}
 
-	public static class ConditionBuilder implements Condition {
+	public class ConditionBuilder implements Condition {
 		private Condition currentCondition;
 		private final SqlFragment lhs;
 
@@ -635,11 +669,14 @@ public class OracleSql {
 		// tag interface
 	}
 
-	public interface SqlStatementBuilder extends SqlFragment {
-		// empty
+	public abstract class SqlStatementBuilder implements SqlFragment {
+		public final StatementOperation toStatement() {
+			return new StatementOperation(cnxProvider, getSql(), this);
+		}
+
 	}
 
-	public static class SqlDeleteBuilder implements SqlStatementBuilder {
+	public class SqlDeleteBuilder extends SqlStatementBuilder {
 		private final String fromClause;
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 
@@ -719,7 +756,7 @@ public class OracleSql {
 		}
 	}
 
-	public static class SqlSelectBuilder implements SqlFragment {
+	public class SqlSelectBuilder implements SqlFragment {
 		private boolean distinct;
 		private final Collection<WithClauseBuilder> withClauses = new ArrayList<>();
 		private final Collection<SqlFragment> selects = new ArrayList<>();
@@ -729,6 +766,10 @@ public class OracleSql {
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 		private final Collection<SqlFragment> havingClauses = new ArrayList<>();
 		private String fromClause;
+
+		public <T> Query<T> toQuery(ResultSetExtractor<T> extractor) {
+			return new Query<T>(cnxProvider, getSql(), this, extractor);
+		}
 
 		public SqlSelectBuilder distinct() {
 			distinct = true;
@@ -934,7 +975,7 @@ public class OracleSql {
 		}
 	}
 
-	public static class InsertValuesBuilder implements SqlFragment {
+	public class InsertValuesBuilder implements SqlFragment {
 		private final Collection<SetValueClause> setClauses = new ArrayList<>();
 
 		public InsertValuesBuilder() {
@@ -972,7 +1013,7 @@ public class OracleSql {
 
 	}
 
-	public static class SqlInsertBuilder implements SqlStatementBuilder {
+	public class SqlInsertBuilder extends SqlStatementBuilder {
 		private final String tableName;
 		private SqlFragment body;
 		private Collection<String> columns;
@@ -1016,7 +1057,7 @@ public class OracleSql {
 
 	}
 
-	public static class SqlUpdateBuilder implements SqlStatementBuilder {
+	public class SqlUpdateBuilder extends SqlStatementBuilder {
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 		private final Collection<UpdateSetClause> setClauses = new ArrayList<>();
 		private final String tableName;
@@ -1114,7 +1155,7 @@ public class OracleSql {
 		}
 	}
 
-	public static class SqlMergeBuilder implements SqlStatementBuilder {
+	public class SqlMergeBuilder extends SqlStatementBuilder {
 
 		private final String tableName;
 		private final Collection<SqlMergeClause> setClauses = new ArrayList<>();
@@ -1238,15 +1279,7 @@ public class OracleSql {
 	/**
 	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
-	public static boolean isDebug() {
+	public boolean isDebug() {
 		return debug;
 	}
-
-	/**
-	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
-	 */
-	public static void setDebug(boolean debug) {
-		OracleSql.debug = debug;
-	}
-
 }
