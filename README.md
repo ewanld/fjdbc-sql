@@ -115,3 +115,16 @@ where
     (job = ?  /* SALESMAN */ or name = ?  /* KING */)
     and hiredate < SYSDATE - 1
 ```
+
+### JOIN clause
+```Java
+dsl.select("e.ename", "d.deptname")
+   .from("emp e")
+   .innerJoin("dept d on e.deptno = d.deptno");
+```
+Generates the following statement:
+```SQL
+select e.ename, d.deptname
+from emp e
+inner join dept d on e.deptno = d.deptno
+```
