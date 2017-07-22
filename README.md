@@ -10,14 +10,14 @@ SingleConnectionProvider provider = new SingleConnectionProvider(cnx);
 OracleSql dsl = new OracleSql(provider);
 ```
 
-### Select
+### Select data from the database
 ```java
 SqlSelectBuilder builder = dsl.select("ename").from("emp").where("empno").eq().value(1);
 SingleRowExtractor<Integer> extractor = rs -> rs.getString("ename");
 builder.toQuery(extractor).toList();  // returns ["KING"]
 ```
 
-## Delete examples
+## DELETE examples
 ```java
 dsl.deleteFrom("emp")
    .where("job").notEq().value("SALESMAN");
@@ -30,7 +30,7 @@ where
 ```
 
 
-## Update examples
+## UPDATE examples
 ```java
 dsl.update("emp").set("salary").raw("salary * 2");
 ```
@@ -40,8 +40,8 @@ update emp set
     salary = salary * 2
 ```
 
-## Insert examples
-### Simple insert
+## INSERT examples
+### Simple INSERT
 ```java
 SqlInsertBuilder builder = dsl.insertInto("emp");
 builder.values().set("ename").value("KING");
@@ -54,7 +54,7 @@ insert into emp(ename, job, hiredate)
 values (?  /* KING */, ?  /* PRESIDENT */, ?  /* 2017-07-22 */)
 ```
 
-### Insert with subquery
+### INSERT with subquery
 ```java
 SqlInsertBuilder builder = dsl.insertInto("emp2");
 builder.subquery("ename", "job").select("ename", "job").from("emp");
