@@ -190,7 +190,7 @@ public void insertBatch() {
     // the empty string is used to generate the SQL, but anything else would
     // have been fine since we are dealing with a prepared statement.
     String sql = createInsertStatement("").getSql();
-    dsl.batchStatement(sql, stream).toStatement().executeAndCommit();
+    dsl.batchStatement(sql, stream).executeAndCommit();
 }
 ```
 ### Batch statement with input data coming from a Collection
@@ -198,5 +198,5 @@ This is the same example as previously, except the data come from a Collection i
 ```java
 List<String> values = Arrays.asList("SALES", "ACCOUNTING");
 List<SqlInsertBuilder> inserts = values.stream().map(MyClass::createInsertStatement).collect(Collectors.toList());
-dsl.batchStatement(inserts).toStatement().executeAndCommit();
+dsl.batchStatement(inserts).executeAndCommit();
 ```

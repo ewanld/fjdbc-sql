@@ -227,8 +227,8 @@ public class OracleSql {
 	/**
 	 * Build a batch statement using the specified statements.
 	 */
-	public SqlStatement batchStatement(Collection<? extends SqlStatement> statements) {
-		return new BatchStatementBuilder(statements);
+	public StatementOperation batchStatement(Collection<? extends SqlStatement> statements) {
+		return new BatchStatementBuilder(statements).toStatement();
 	}
 
 	/**
