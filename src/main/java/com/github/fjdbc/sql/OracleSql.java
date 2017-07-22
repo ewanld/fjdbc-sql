@@ -17,8 +17,10 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.github.fjdbc.ConnectionProvider;
+import com.github.fjdbc.FjdbcException;
 import com.github.fjdbc.PreparedStatementBinder;
 import com.github.fjdbc.op.StatementOperation;
 import com.github.fjdbc.query.Query;
@@ -223,8 +225,16 @@ public class OracleSql {
 	/**
 	 * Build a batch statement using the specified statements.
 	 */
-	public BatchStatementBuilder batchStatement(Collection<? extends SqlStatement> statements) {
+	public SqlStatement batchStatement(Collection<? extends SqlStatement> statements) {
 		return new BatchStatementBuilder(statements);
+	}
+
+	/**
+	 * Build a batch statement from an SQL string and a stream of prepared
+	 * statement binders.
+	 */
+	public SqlStatement batchStatement(String sql, Stream<? extends PreparedStatementBinder> statements) {
+		return new StreamBackedBatchStatement(sql, statements);
 	}
 
 	public enum RelationalOperator implements SqlFragment {
@@ -1447,6 +1457,38 @@ public class OracleSql {
 			}
 		}
 
+	}
+
+	/**
+	 * Create a batch statement from an SQL string and a stream of prepared
+	 * statement binders.
+	 */
+	public class StreamBackedBatchStatement extends SqlStatement {
+		private final Stream<? extends PreparedStatementBinder> statements;
+		private final String sql;
+
+		public StreamBackedBatchStatement(String sql, Stream<? extends PreparedStatementBinder> statements) {
+			this.sql = sql;
+			this.statements = statements;
+		}
+
+		@Override
+		public void appendTo(SqlStringBuilder w) {
+			w.append(sql);
+		}
+
+		@Override
+		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
+			statements.forEachOrdered(s -> {
+				try {
+					s.bind(ps, index);
+					ps.addBatch();
+				} catch (final SQLException e) {
+					throw new FjdbcException(e);
+				}
+				index.reset();
+			});
+		}
 	}
 
 	/**
