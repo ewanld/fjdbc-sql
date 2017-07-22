@@ -17,9 +17,7 @@ SingleRowExtractor<Integer> extractor = rs -> rs.getString("ename");
 builder.toQuery(extractor).toList();  // returns ["KING"]
 ```
 
-## More examples
-
-### Delete
+## Delete examples
 ```java
 dsl.deleteFrom("emp")
    .where("job").notEq().value("SALESMAN");
@@ -32,7 +30,7 @@ where
 ```
 
 
-### Update
+## Update examples
 ```java
 dsl.update("emp").set("salary").raw("salary * 2");
 ```
@@ -41,6 +39,8 @@ Generates the following statement:
 update emp set
     salary = salary * 2
 ```
+
+## Insert examples
 ### Simple insert
 ```java
 SqlInsertBuilder builder = dsl.insertInto("emp");
@@ -66,7 +66,8 @@ select ename, job
 from emp
 ```
 
-### Aggregate functions
+## SELECT examples
+### Aggregate function
 ```java
 dsl.select("job", "count(*)")
    .from("emp")
@@ -77,4 +78,20 @@ Generates the following statement:
 select job, count(*)
 from emp
 group by job
+```
+
+### UNION
+```java
+dsl.union(
+   dsl.select("job").from("emp"),
+	dsl.select("job").from("emp2")
+);
+```
+Generates the following statement:
+```SQL
+select job
+from emp
+union
+select job
+from emp2
 ```
