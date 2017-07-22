@@ -144,7 +144,6 @@ dsl.select("*");
     .from("dept")
     .where("deptname").eq().value("SALES")
 );
-
 ```
 Generates the following statement:
 ```SQL
@@ -157,4 +156,20 @@ where
         where
             deptname = ?  /* SALES */
     )
+```
+
+### Select with IN clause
+```Java
+final Collection<String> names = Arrays.asList("KING", "ALLEN");
+dsl.select("*")
+.from("emp")
+.where("ename").in_String(names);
+
+```
+Generates the following statement:
+```SQL
+select *
+from emp
+where
+    ename in (?, ?)
 ```
