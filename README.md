@@ -67,7 +67,7 @@ from emp
 ```
 
 ## SELECT examples
-### Aggregate function
+### SELECT with aggregate function
 ```java
 dsl.select("job", "count(*)")
    .from("emp")
@@ -80,7 +80,7 @@ from emp
 group by job
 ```
 
-### UNION
+### Compound statement: UNION
 ```java
 dsl.union(
     dsl.select("job").from("emp"),
@@ -96,7 +96,7 @@ select job
 from emp2
 ```
 
-### AND/OR conditions
+### SELECT with AND/OR operators
 ```java
 final SqlSelectBuilder builder = dsl.select("*");
 builder.from("emp");
@@ -116,7 +116,7 @@ where
     and hiredate < SYSDATE - 1
 ```
 
-### JOIN clause
+### SELECT with JOIN clause
 ```Java
 dsl.select("e.ename", "d.deptname")
    .from("emp e")
