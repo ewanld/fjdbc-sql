@@ -30,6 +30,7 @@ where
     job <> ?  /* SALESMAN */
 ```
 
+
 ### Update
 ```java
 dsl.update("emp").set("salary").raw("salary * 2");
@@ -39,14 +40,26 @@ Generates the following statement:
 update emp set
     salary = salary * 2
 ```
-### Insert
+### Simple insert
 ```java
 SqlInsertBuilder builder = dsl.insertInto("emp");
 builder.values().set("ename").value("KING");
 builder.values().set("job").value("PRESIDENT");
 ```
-
+Generates the following statement:
 ```SQL
 insert into emp(ename, job)
 values (?  /* KING */, ?  /* PRESIDENT */)
+```
+
+### Insert with subquery
+```java
+SqlInsertBuilder builder = dsl.insertInto("emp2");
+builder.subquery("ename", "job").select("ename", "job").from("emp");
+```
+Generates the following statement:
+```SQL
+insert into emp2 (ename, job)
+select ename, job
+from emp
 ```
