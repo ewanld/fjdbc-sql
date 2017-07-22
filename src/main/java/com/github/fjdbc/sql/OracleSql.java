@@ -126,8 +126,10 @@ public class OracleSql {
 	 * @param lhs
 	 *            The left-hand side of the condition.
 	 */
-	public ConditionBuilder<Void> condition(String lhs) {
-		return new ConditionBuilder<>(lhs, null);
+	public ConditionBuilder<Condition> condition(String lhs) {
+		final ConditionBuilder<Condition> res = new ConditionBuilder<>(lhs, null);
+		res.setParent(res);
+		return res;
 	}
 
 	/**
@@ -158,7 +160,7 @@ public class OracleSql {
 	 * @param conditions
 	 *            The conditions to be joined with the {@code AND} operator.
 	 */
-	public Condition and(ConditionBuilder<?>... conditions) {
+	public Condition and(Condition... conditions) {
 		return new CompositeCondition(Arrays.asList(conditions), LogicalOperator.AND);
 	}
 
@@ -168,7 +170,7 @@ public class OracleSql {
 	 * @param conditions
 	 *            The conditions to be joined with the {@code OR} operator.
 	 */
-	public Condition or(ConditionBuilder<?>... conditions) {
+	public Condition or(Condition... conditions) {
 		return new CompositeCondition(Arrays.asList(conditions), LogicalOperator.OR);
 	}
 
@@ -408,7 +410,7 @@ public class OracleSql {
 			w.append(sql);
 			if (debug) {
 				w.append("  /* ");
-				w.append(OracleSqlUtils.escapeComment(value.toString()));
+				w.append(value == null ? "null" : OracleSqlUtils.escapeComment(value.toString()));
 				w.append(" */");
 			}
 		}
@@ -692,13 +694,16 @@ public class OracleSql {
 	public class ConditionBuilder<P> implements Condition {
 		private Condition currentCondition;
 		private final SqlFragment lhs;
-		private final P parent;
+		private P parent;
 
 		public ConditionBuilder(String _lhs, P parent) {
 			this.lhs = new SqlRaw(_lhs);
 			this.parent = parent;
 		}
 
+		public void setParent(P parent) {
+			this.parent = parent;
+		}
 		public ExpressionBuilder<P> is(RelationalOperator _operator) {
 			final ExpressionBuilder<P> rhs = new ExpressionBuilder<>(parent);
 			currentCondition = new SimpleConditionBuilder(lhs, _operator, rhs);
@@ -1154,9 +1159,9 @@ public class OracleSql {
 			this.tableName = tableName;
 		}
 
-		public SqlSelectBuilder subquery(Collection<String> _columns) {
+		public SqlSelectBuilder subquery(String... _columns) {
 			if (body != null) throw new IllegalArgumentException();
-			this.columns = _columns;
+			this.columns = Arrays.asList(_columns);
 			final SqlSelectBuilder res = new SqlSelectBuilder();
 			body = res;
 			return res;
