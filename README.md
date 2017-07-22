@@ -27,7 +27,7 @@ builder.toQuery(extractor).toList();  // returns ["KING"]
 ## DELETE examples
 ```java
 dsl.deleteFrom("emp")
-   .where("job").notEq().value("SALESMAN");
+.where("job").notEq().value("SALESMAN");
 ````
 Generates the following statement:
 ```SQL
@@ -77,8 +77,8 @@ from emp
 ### SELECT with aggregate function
 ```java
 dsl.select("job", "count(*)")
-   .from("emp")
-   .groupBy("job");
+.from("emp")
+.groupBy("job");
 ```
 Generates the following statement:
 ```SQL
@@ -126,12 +126,36 @@ where
 ### SELECT with JOIN clause
 ```Java
 dsl.select("e.ename", "d.deptname")
-   .from("emp e")
-   .innerJoin("dept d on e.deptno = d.deptno");
+.from("emp e")
+.innerJoin("dept d on e.deptno = d.deptno");
 ```
 Generates the following statement:
 ```SQL
 select e.ename, d.deptname
 from emp e
 inner join dept d on e.deptno = d.deptno
+```
+
+### Select with subquery
+```java
+dsl.select("*");
+.from("emp");
+.where("deptno").eq().subquery(
+    dsl.select("deptno")
+    .from("dept")
+    .where("deptname").eq().value("SALES")
+);
+
+```
+Generates the following statement:
+```SQL
+select *
+from emp
+where
+    deptno = (
+        select deptno
+        from dept
+        where
+            deptname = ?  /* SALES */
+    )
 ```
