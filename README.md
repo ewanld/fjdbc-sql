@@ -83,8 +83,8 @@ group by job
 ### UNION
 ```java
 dsl.union(
-   dsl.select("job").from("emp"),
-	dsl.select("job").from("emp2")
+    dsl.select("job").from("emp"),
+    dsl.select("job").from("emp2")
 );
 ```
 Generates the following statement:
@@ -94,4 +94,24 @@ from emp
 union
 select job
 from emp2
+```
+
+### AND/OR conditions
+```java
+final SqlSelectBuilder builder = dsl.select("*");
+builder.from("emp");
+builder.where(dsl.or(
+    dsl.condition("job").eq().value("SALESMAN"),
+    dsl.condition("name").eq().value("KING")
+));
+// Multiple WHERE clauses are joined with AND
+builder.where("hiredate").lt().raw("SYSDATE - 1");
+```
+Generates the following statement:
+```SQL
+select *
+from emp
+where
+    (job = ?  /* SALESMAN */ or name = ?  /* KING */)
+    and hiredate < SYSDATE - 1
 ```
