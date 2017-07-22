@@ -6,7 +6,8 @@ import java.util.List;
 
 public class OracleSqlUtils {
 	/**
-	 * Partition a list into sublists of length L. The last list may have a size smaller than L.<br>
+	 * Partition a list into sublists of length L. The last list may have a size
+	 * smaller than L.<br>
 	 * The sublists are backed by the original list.
 	 */
 	public static <T> List<List<T>> partition(Collection<T> collection, final int partitionSize) {
@@ -16,7 +17,8 @@ public class OracleSqlUtils {
 	}
 
 	/**
-	 * Partition a list into sublists of length L. The last list may have a size smaller than L.<br>
+	 * Partition a list into sublists of length L. The last list may have a size
+	 * smaller than L.<br>
 	 * The sublists are backed by the original list.
 	 */
 	private static <T> List<List<T>> partitionList(List<T> list, final int partitionSize) {
@@ -30,8 +32,10 @@ public class OracleSqlUtils {
 	}
 
 	public static String escapeComment(String comment) {
-		final String res = comment.replace("/*", "\\slash \\star").replace("*/", "\\star \\slash").replace("--",
-				"\\minus \\minus");
+		final String res = comment
+				.replace("/*", "\\slash \\star")
+				.replace("*/", "\\star \\slash")
+				.replace("--", "\\minus \\minus");
 		return res;
 	}
 

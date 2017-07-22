@@ -26,20 +26,31 @@ import com.github.fjdbc.query.ResultSetExtractor;
 import com.github.fjdbc.util.IntSequence;
 
 /**
- * SQL generator using a fluent interface..
+ * SQL generator using a fluent interface.
  */
 public class OracleSql {
 	/**
 	 * Debug statements by printing the value of prepared values in a comment
 	 * next to the '?' placeholder.
 	 */
-	final boolean debug;
-	final ConnectionProvider cnxProvider;
+	private final boolean debug;
+	private final ConnectionProvider cnxProvider;
 
+	/**
+	 * @param cnxProvider
+	 *            The database connection provider.
+	 */
 	public OracleSql(ConnectionProvider cnxProvider) {
 		this(cnxProvider, false);
 	}
 
+	/**
+	 * @param cnxProvider
+	 *            The database connection provider.
+	 * @param debug
+	 *            Debug statements by printing the value of prepared values in a
+	 *            comment next to the '?' placeholder.
+	 */
 	public OracleSql(ConnectionProvider cnxProvider, boolean debug) {
 		this.cnxProvider = cnxProvider;
 		this.debug = debug;
@@ -107,56 +118,118 @@ public class OracleSql {
 		return new SqlMergeBuilder(tableName);
 	}
 
+	/**
+	 * Build an SQL condition, to use in {@code WHERE} clauses for instance.
+	 * 
+	 * @param lhs
+	 *            The left-hand side of the condition.
+	 */
 	public ConditionBuilder condition(String lhs) {
 		return new ConditionBuilder(lhs);
 	}
+
+	/**
+	 * Convert an arbitrary string to an SQL fragment.
+	 * <p>
+	 * The SQL fragment may then be used in any of the {@code raw} methods, or
+	 * as an SQL {@code Condition}.
+	 */
 
 	public SqlRaw raw(String sql) {
 		return new SqlRaw(sql);
 	}
 
+	/**
+	 * Convert an arbitrary string and a prepared statement binder to an SQL
+	 * fragment.
+	 * <p>
+	 * The SQL fragment may then be used in any of the {@code raw} methods, or
+	 * as an SQL {@code Condition}.
+	 */
 	public SqlRaw raw(String sql, PreparedStatementBinder binder) {
 		return new SqlRaw(sql, binder);
 	}
 
-	public CompositeCondition and(ConditionBuilder... conditions) {
+	/**
+	 * Build an {@code AND} condition.
+	 * 
+	 * @param conditions
+	 *            The conditions to be joined with the {@code AND} operator.
+	 */
+	public Condition and(ConditionBuilder... conditions) {
 		return new CompositeCondition(Arrays.asList(conditions), LogicalOperator.AND);
 	}
 
-	public CompositeCondition or(ConditionBuilder... conditions) {
+	/**
+	 * Build an {@code OR} condition.
+	 * 
+	 * @param conditions
+	 *            The conditions to be joined with the {@code OR} operator.
+	 */
+	public Condition or(ConditionBuilder... conditions) {
 		return new CompositeCondition(Arrays.asList(conditions), LogicalOperator.OR);
 	}
 
-	public CompositeSqlFragment union(SqlSelectBuilder... selects) {
-		return new CompositeSqlFragment(Arrays.asList(selects), "union\n");
+	/**
+	 * Build a {@code SELECT} statement that is the {@code UNION} of all
+	 * specified {@SELECT} statements.
+	 * 
+	 * @param selects
+	 *            The {@code SELECT} statements to join.
+	 */
+	public SqlSelectStatement union(SqlSelectBuilder... selects) {
+		return new CompositeSqlSelectStatement(Arrays.asList(selects), "union\n");
 	}
 
-	public CompositeSqlFragment unionAll(SqlSelectBuilder... selects) {
-		return new CompositeSqlFragment(Arrays.asList(selects), "union all\n");
+	/**
+	 * Build a {@code SELECT} statement that is the {@code UNION ALL} of all
+	 * specified {@SELECT} statements.
+	 * 
+	 * @param selects
+	 *            The {@code SELECT} statements to join.
+	 */
+	public SqlSelectStatement unionAll(SqlSelectBuilder... selects) {
+		return new CompositeSqlSelectStatement(Arrays.asList(selects), "union all\n");
 	}
 
-	public CompositeSqlFragment intersect(SqlSelectBuilder... selects) {
-		return new CompositeSqlFragment(Arrays.asList(selects), "intersect\n");
+	/**
+	 * Build a {@code SELECT} statement that is the intersection of all
+	 * specified {@code SELECT} statements.
+	 * 
+	 * @param selects
+	 *            The {@code SELECT} statements to join with the
+	 *            {@code INTERSECT} operator.
+	 */
+	public SqlSelectStatement intersect(SqlSelectBuilder... selects) {
+		return new CompositeSqlSelectStatement(Arrays.asList(selects), "intersect\n");
 	}
 
-	public CompositeSqlFragment minus(SqlSelectBuilder a, SqlSelectBuilder b) {
-		return new CompositeSqlFragment(Arrays.asList(a, b), "minus\n");
+	/**
+	 * Build a {@code SELECT} statement that represents {@code a MINUS b}.
+	 */
+	public SqlSelectStatement minus(SqlSelectBuilder a, SqlSelectBuilder b) {
+		return new CompositeSqlSelectStatement(Arrays.asList(a, b), "minus\n");
 	}
 
+	/**
+	 * Build a batch statement. The batch statement is initially empty;
+	 * statements must be added with the
+	 * {@link BatchStatementBuilder#addStatement} method.
+	 */
 	public BatchStatementBuilder batchStatement() {
 		return new BatchStatementBuilder();
 	}
+
+	/**
+	 * Build a batch statement using the specified statements.
+	 */
+	public BatchStatementBuilder batchStatement(Collection<? extends SqlStatement> statements) {
+		return new BatchStatementBuilder(statements);
+	}
+
 	public enum RelationalOperator implements SqlFragment {
-		EQ("="),
-		NOT_EQ("<>"),
-		GT(">"),
-		GTE(">="),
-		LT("<"),
-		LTE("<="),
-		LIKE("like"),
-		IS("is"),
-		IS_NOT("is not"),
-		IN("in");
+		EQ("="), NOT_EQ("<>"), GT(">"), GTE(">="), LT("<"), LTE("<="), LIKE("like"), IS("is"), IS_NOT("is not"), IN(
+				"in");
 
 		private final String value;
 
@@ -183,13 +256,14 @@ public class OracleSql {
 			} else {
 				final int maxItemsForInClause = 1000; // Oracle limit
 				final ArrayList<String> sqlClauses = new ArrayList<String>(values.size() / 1000 + 1);
-				final List<List<String>> subCollections = OracleSqlUtils
-						.partition(Collections.nCopies(values.size(), "?"), maxItemsForInClause);
+				final List<List<String>> subCollections =
+						OracleSqlUtils.partition(Collections.nCopies(values.size(), "?"), maxItemsForInClause);
 				for (final List<String> subCollection : subCollections) {
 					sqlClauses.add(
 							lhs.getSql() + " in (" + subCollection.stream().collect(Collectors.joining(", ")) + ")");
 				}
-				sql = sqlClauses.size() == 1 ? sqlClauses.get(0)
+				sql = sqlClauses.size() == 1
+						? sqlClauses.get(0)
 						: ("(" + sqlClauses.stream().collect(Collectors.joining(" or ")) + ")");
 
 				binder = (ps, index) -> {
@@ -214,6 +288,9 @@ public class OracleSql {
 
 	public static class SqlRaw implements SqlFragment, Condition {
 		private final String sql;
+		/**
+		 * May be null.
+		 */
 		private final PreparedStatementBinder binder;
 
 		public SqlRaw(String sql) {
@@ -358,14 +435,14 @@ public class OracleSql {
 		}
 
 		@Override
-		public void bind(PreparedStatement ps, IntSequence index)
-				throws SQLException {
+		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
 			wrapped.bind(ps, index);
 		}
 	}
 
 	/**
-	 * @param <P>
+	 * @param
+	 * 			<P>
 	 *            the parent type
 	 */
 	public class ExpressionBuilder<P> implements SqlFragment {
@@ -710,13 +787,13 @@ public class OracleSql {
 		// tag interface
 	}
 
-	public abstract class SqlStatementBuilder implements SqlFragment {
+	public abstract class SqlStatement implements SqlFragment {
 		public final StatementOperation toStatement() {
 			return new StatementOperation(cnxProvider, getSql(), this);
 		}
 	}
 
-	public class SqlDeleteBuilder extends SqlStatementBuilder {
+	public class SqlDeleteBuilder extends SqlStatement {
 		private final String fromClause;
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 
@@ -753,8 +830,8 @@ public class OracleSql {
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final CompositeIterator<SqlFragment> fragmentsIterator = new CompositeIterator<>(
-					Arrays.asList(whereClauses.iterator()));
+			final CompositeIterator<SqlFragment> fragmentsIterator =
+					new CompositeIterator<>(Arrays.asList(whereClauses.iterator()));
 			while (fragmentsIterator.hasNext()) {
 				fragmentsIterator.next().bind(ps, index);
 			}
@@ -796,7 +873,13 @@ public class OracleSql {
 		}
 	}
 
-	public class SqlSelectBuilder implements SqlFragment {
+	public abstract class SqlSelectStatement implements SqlFragment {
+		public <T> Query<T> toQuery(ResultSetExtractor<T> extractor) {
+			return new Query<T>(cnxProvider, getSql(), this, extractor);
+		}
+	}
+
+	public class SqlSelectBuilder extends SqlSelectStatement {
 		private boolean distinct;
 		private final Collection<WithClauseBuilder> withClauses = new ArrayList<>();
 		private final Collection<SqlFragment> selects = new ArrayList<>();
@@ -806,10 +889,6 @@ public class OracleSql {
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 		private final Collection<SqlFragment> havingClauses = new ArrayList<>();
 		private String fromClause;
-
-		public <T> Query<T> toQuery(ResultSetExtractor<T> extractor) {
-			return new Query<T>(cnxProvider, getSql(), this, extractor);
-		}
 
 		public SqlSelectBuilder distinct() {
 			distinct = true;
@@ -1046,14 +1125,15 @@ public class OracleSql {
 			w.append(")");
 			w.appendln();
 			w.append("values (");
-			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql)
-					.collect(Collectors.joining(", ")));
+			w.append(
+					setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql).collect(
+							Collectors.joining(", ")));
 			w.append(")");
 		}
 
 	}
 
-	public class SqlInsertBuilder extends SqlStatementBuilder {
+	public class SqlInsertBuilder extends SqlStatement {
 		private final String tableName;
 		private SqlFragment body;
 		private Collection<String> columns;
@@ -1097,7 +1177,7 @@ public class OracleSql {
 
 	}
 
-	public class SqlUpdateBuilder extends SqlStatementBuilder {
+	public class SqlUpdateBuilder extends SqlStatement {
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 		private final Collection<UpdateSetClause> setClauses = new ArrayList<>();
 		private final String tableName;
@@ -1148,8 +1228,8 @@ public class OracleSql {
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final CompositeIterator<SqlFragment> fragmentsIterator = new CompositeIterator<>(
-					Arrays.asList(setClauses.iterator(), whereClauses.iterator()));
+			final CompositeIterator<SqlFragment> fragmentsIterator =
+					new CompositeIterator<>(Arrays.asList(setClauses.iterator(), whereClauses.iterator()));
 			while (fragmentsIterator.hasNext()) {
 				fragmentsIterator.next().bind(ps, index);
 			}
@@ -1195,7 +1275,7 @@ public class OracleSql {
 		}
 	}
 
-	public class SqlMergeBuilder extends SqlStatementBuilder {
+	public class SqlMergeBuilder extends SqlStatement {
 
 		private final String tableName;
 		private final Collection<SqlMergeClause> setClauses = new ArrayList<>();
@@ -1206,15 +1286,17 @@ public class OracleSql {
 
 		public ExpressionBuilder<SqlMergeBuilder> on(String columnName) {
 			final ExpressionBuilder<SqlMergeBuilder> res = new ExpressionBuilder<>(this);
-			setClauses.add(new SqlMergeClause(
-					EnumSet.of(SqlMergeClauseFlag.ON_CLAUSE, SqlMergeClauseFlag.INSERT_CLAUSE), columnName, res));
+			setClauses.add(
+					new SqlMergeClause(EnumSet.of(SqlMergeClauseFlag.ON_CLAUSE, SqlMergeClauseFlag.INSERT_CLAUSE),
+							columnName, res));
 			return res;
 		}
 
 		public ExpressionBuilder<SqlMergeBuilder> insertOrUpdate(String columnName) {
 			final ExpressionBuilder<SqlMergeBuilder> res = new ExpressionBuilder<>(this);
-			setClauses.add(new SqlMergeClause(
-					EnumSet.of(SqlMergeClauseFlag.UPDATE_CLAUSE, SqlMergeClauseFlag.INSERT_CLAUSE), columnName, res));
+			setClauses.add(
+					new SqlMergeClause(EnumSet.of(SqlMergeClauseFlag.UPDATE_CLAUSE, SqlMergeClauseFlag.INSERT_CLAUSE),
+							columnName, res));
 			return res;
 		}
 
@@ -1226,12 +1308,15 @@ public class OracleSql {
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final List<SqlMergeClause> onClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(Collectors.toList());
-			final List<SqlMergeClause> updateClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(Collectors.toList());
-			final List<SqlMergeClause> insertClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(Collectors.toList());
+			final List<SqlMergeClause> onClauses =
+					setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(
+							Collectors.toList());
+			final List<SqlMergeClause> updateClauses =
+					setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(
+							Collectors.toList());
+			final List<SqlMergeClause> insertClauses =
+					setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(
+							Collectors.toList());
 
 			final CompositeIterator<SqlMergeClause> it = new CompositeIterator<>(
 					Arrays.asList(onClauses.iterator(), updateClauses.iterator(), insertClauses.iterator()));
@@ -1242,12 +1327,15 @@ public class OracleSql {
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
-			final List<SqlMergeClause> onClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(Collectors.toList());
-			final List<SqlMergeClause> updateClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(Collectors.toList());
-			final List<SqlMergeClause> insertClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(Collectors.toList());
+			final List<SqlMergeClause> onClauses =
+					setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(
+							Collectors.toList());
+			final List<SqlMergeClause> updateClauses =
+					setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(
+							Collectors.toList());
+			final List<SqlMergeClause> insertClauses =
+					setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(
+							Collectors.toList());
 
 			w.append("merge into ").append(tableName).appendln(" using dual on (");
 			w.increaseIndent();
@@ -1269,19 +1357,20 @@ public class OracleSql {
 			w.append("when not matched then insert (");
 			w.append(insertClauses.stream().map(SqlMergeClause::getColumnName).collect(Collectors.joining(", ")));
 			w.append(") values (");
-			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql)
-					.collect(Collectors.joining(", ")));
+			w.append(
+					insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql).collect(
+							Collectors.joining(", ")));
 			w.append(")");
 		}
 
 	}
 
 	@FunctionalInterface
-	public interface EndAwareConsumer<T> {
+	private interface EndAwareConsumer<T> {
 		void accept(T value, boolean first, boolean last);
 	}
 
-	public static <T> void forEach_endAware(Collection<? extends T> collection, EndAwareConsumer<T> consumer) {
+	private static <T> void forEach_endAware(Collection<? extends T> collection, EndAwareConsumer<T> consumer) {
 		final int count = collection.size();
 		int i = 0;
 		for (final T t : collection) {
@@ -1290,11 +1379,11 @@ public class OracleSql {
 		}
 	}
 
-	public static class CompositeSqlFragment implements SqlFragment {
-		private final Collection<SqlFragment> fragments;
+	public class CompositeSqlSelectStatement extends SqlSelectStatement {
+		private final Collection<SqlSelectStatement> fragments;
 		private final String joinClause;
 
-		public CompositeSqlFragment(Collection<SqlFragment> fragments, String joinClause) {
+		public CompositeSqlSelectStatement(Collection<SqlSelectStatement> fragments, String joinClause) {
 			this.fragments = fragments;
 			this.joinClause = joinClause;
 		}
@@ -1319,34 +1408,39 @@ public class OracleSql {
 	/**
 	 * Represent a batch statement. Unlike in JDBC where a batch statement is
 	 * represented by a single {@link java.sql.Statement} object, here the
-	 * BatchStatement holds a collection of {@link SqlStatementBuilder} items.
+	 * BatchStatement holds a collection of {@link SqlStatement} items.
 	 * <p>
-	 * Warning: each {@link SqlStatementBuilder} item must represent the same
-	 * SQL statement. Only the first statement will be converted to SQL.
+	 * Warning: each {@link SqlStatement} item must represent the same SQL
+	 * statement. Only the first statement will be converted to SQL.
 	 * <p>
 	 * At the moment, there is no check to actually make sure the SQL is the
 	 * same. This may change in the future.
 	 *
 	 */
-	public class BatchStatementBuilder extends SqlStatementBuilder {
-		private final Collection<SqlStatementBuilder> statements =
-				new ArrayList<>();
+	public class BatchStatementBuilder extends SqlStatement {
+		private final Collection<SqlStatement> statements;
 
-		public void addStatement(SqlStatementBuilder statement) {
+		public BatchStatementBuilder() {
+			this.statements = new ArrayList<>();
+		}
+
+		public BatchStatementBuilder(Collection<? extends SqlStatement> statements) {
+			this.statements = new ArrayList<>(statements);
+		}
+
+		public void addStatement(SqlStatement statement) {
 			statements.add(statement);
 		}
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
-			if (statements.isEmpty())
-				return;
+			if (statements.isEmpty()) return;
 			statements.iterator().next().appendTo(w);
 		}
 
 		@Override
-		public void bind(PreparedStatement ps, IntSequence index)
-				throws SQLException {
-			for (final SqlStatementBuilder s : statements) {
+		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
+			for (final SqlStatement s : statements) {
 				s.bind(ps, index);
 				ps.addBatch();
 				index.reset();
@@ -1354,8 +1448,10 @@ public class OracleSql {
 		}
 
 	}
+
 	/**
-	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
+	 * Debug statements by printing the value of prepared values in a comment
+	 * next to the '?' placeholder.
 	 */
 	public boolean isDebug() {
 		return debug;
