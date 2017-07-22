@@ -126,8 +126,8 @@ public class OracleSql {
 	 * @param lhs
 	 *            The left-hand side of the condition.
 	 */
-	public ConditionBuilder condition(String lhs) {
-		return new ConditionBuilder(lhs);
+	public ConditionBuilder<Void> condition(String lhs) {
+		return new ConditionBuilder<>(lhs, null);
 	}
 
 	/**
@@ -158,7 +158,7 @@ public class OracleSql {
 	 * @param conditions
 	 *            The conditions to be joined with the {@code AND} operator.
 	 */
-	public Condition and(ConditionBuilder... conditions) {
+	public Condition and(ConditionBuilder<?>... conditions) {
 		return new CompositeCondition(Arrays.asList(conditions), LogicalOperator.AND);
 	}
 
@@ -168,7 +168,7 @@ public class OracleSql {
 	 * @param conditions
 	 *            The conditions to be joined with the {@code OR} operator.
 	 */
-	public Condition or(ConditionBuilder... conditions) {
+	public Condition or(ConditionBuilder<?>... conditions) {
 		return new CompositeCondition(Arrays.asList(conditions), LogicalOperator.OR);
 	}
 
@@ -689,30 +689,32 @@ public class OracleSql {
 
 	}
 
-	public class ConditionBuilder implements Condition {
+	public class ConditionBuilder<P> implements Condition {
 		private Condition currentCondition;
 		private final SqlFragment lhs;
+		private final P parent;
 
-		public ConditionBuilder(String _lhs) {
+		public ConditionBuilder(String _lhs, P parent) {
 			this.lhs = new SqlRaw(_lhs);
+			this.parent = parent;
 		}
 
-		public ExpressionBuilder<ConditionBuilder> is(RelationalOperator _operator) {
-			final ExpressionBuilder<ConditionBuilder> rhs = new ExpressionBuilder<>(this);
+		public ExpressionBuilder<P> is(RelationalOperator _operator) {
+			final ExpressionBuilder<P> rhs = new ExpressionBuilder<>(parent);
 			currentCondition = new SimpleConditionBuilder(lhs, _operator, rhs);
 			return rhs;
 		}
 
 		// @formatter:off
-		public ExpressionBuilder<ConditionBuilder> eq() { return is(RelationalOperator.EQ); }
-		public ExpressionBuilder<ConditionBuilder> notEq() { return is(RelationalOperator.NOT_EQ); }
-		public ExpressionBuilder<ConditionBuilder> gt() { return is(RelationalOperator.GT); }
-		public ExpressionBuilder<ConditionBuilder> lt() { return is(RelationalOperator.LT); }
-		public ExpressionBuilder<ConditionBuilder> gte() { return is(RelationalOperator.GTE); }
-		public ExpressionBuilder<ConditionBuilder> lte() { return is(RelationalOperator.LTE); }
+		public ExpressionBuilder<P> eq() { return is(RelationalOperator.EQ); }
+		public ExpressionBuilder<P> notEq() { return is(RelationalOperator.NOT_EQ); }
+		public ExpressionBuilder<P> gt() { return is(RelationalOperator.GT); }
+		public ExpressionBuilder<P> lt() { return is(RelationalOperator.LT); }
+		public ExpressionBuilder<P> gte() { return is(RelationalOperator.GTE); }
+		public ExpressionBuilder<P> lte() { return is(RelationalOperator.LTE); }
 		// @formatter:on
 
-		private <U> ConditionBuilder _in(Collection<? extends U> values, Class<U> type) {
+		private <U> ConditionBuilder<P> _in(Collection<? extends U> values, Class<U> type) {
 			final InConditionBuilder res = new InConditionBuilder(lhs, values, type);
 			currentCondition = res;
 			return this;
@@ -720,51 +722,51 @@ public class OracleSql {
 
 		// Because of type erasure of generics we cannot have polymorphism here
 		// @formatter:off
-		public ConditionBuilder in_String(Collection<? extends String> values) { _in(values, String.class); return this; }
-		public ConditionBuilder in_BigDecimal(Collection<? extends BigDecimal> values) { _in(values, BigDecimal.class); return this; }
-		public ConditionBuilder in_Boolean(Collection<? extends Boolean> values) { _in(values, Boolean.class); return this; }
-		public ConditionBuilder in_Integer(Collection<? extends Integer> values) { _in(values, Integer.class); return this; }
-		public ConditionBuilder in_Long(Collection<? extends Long> values) { _in(values, Long.class); return this; }
-		public ConditionBuilder in_Float(Collection<? extends Float> values) { _in(values, Float.class); return this; }
-		public ConditionBuilder in_Double(Collection<? extends Double> values) { _in(values, Double.class); return this; }
-		public ConditionBuilder in_bytes(Collection<? extends byte[]> values) { _in(values, byte[].class); return this; }
-		public ConditionBuilder in_Date(Collection<? extends java.sql.Date> values) { _in(values, java.sql.Date.class); return this; }
-		public ConditionBuilder in_Time(Collection<? extends Time> values) { _in(values, Time.class); return this; }
-		public ConditionBuilder in_Timestamp(Collection<? extends Timestamp> values) { _in(values, Timestamp.class); return this; }
-		public ConditionBuilder in_Clob(Collection<? extends Clob> values) { _in(values, Clob.class); return this; }
-		public ConditionBuilder in_Blob(Collection<? extends Blob> values) { _in(values, Blob.class); return this; }
-		public ConditionBuilder in_Array(Collection<? extends Array> values) { _in(values, Array.class); return this; }
-		public ConditionBuilder in_Ref(Collection<? extends Ref> values) { _in(values, Ref.class); return this; }
-		public ConditionBuilder in_URL(Collection<? extends URL> values) { _in(values, URL.class); return this; }
+		public P in_String(Collection<? extends String> values) { _in(values, String.class); return parent; }
+		public P in_BigDecimal(Collection<? extends BigDecimal> values) { _in(values, BigDecimal.class); return parent; }
+		public P in_Boolean(Collection<? extends Boolean> values) { _in(values, Boolean.class); return parent; }
+		public P in_Integer(Collection<? extends Integer> values) { _in(values, Integer.class); return parent; }
+		public P in_Long(Collection<? extends Long> values) { _in(values, Long.class); return parent; }
+		public P in_Float(Collection<? extends Float> values) { _in(values, Float.class); return parent; }
+		public P in_Double(Collection<? extends Double> values) { _in(values, Double.class); return parent; }
+		public P in_bytes(Collection<? extends byte[]> values) { _in(values, byte[].class); return parent; }
+		public P in_Date(Collection<? extends java.sql.Date> values) { _in(values, java.sql.Date.class); return parent; }
+		public P in_Time(Collection<? extends Time> values) { _in(values, Time.class); return parent; }
+		public P in_Timestamp(Collection<? extends Timestamp> values) { _in(values, Timestamp.class); return parent; }
+		public P in_Clob(Collection<? extends Clob> values) { _in(values, Clob.class); return parent; }
+		public P in_Blob(Collection<? extends Blob> values) { _in(values, Blob.class); return parent; }
+		public P in_Array(Collection<? extends Array> values) { _in(values, Array.class); return parent; }
+		public P in_Ref(Collection<? extends Ref> values) { _in(values, Ref.class); return parent; }
+		public P in_URL(Collection<? extends URL> values) { _in(values, URL.class); return parent; }
 		// @formatter:on
 
-		public ConditionBuilder in(SqlSelectBuilder subquery) {
+		public P in(SqlSelectBuilder subquery) {
 			currentCondition = new InSubqueryConditionBuilder(lhs, subquery);
-			return this;
+			return parent;
 		}
 
-		public ConditionBuilder isNull() {
+		public P isNull() {
 			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS, new SqlRaw("null"));
-			return this;
+			return parent;
 		}
 
-		public ConditionBuilder isNotNull() {
+		public P isNotNull() {
 			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS_NOT, new SqlRaw("null"));
-			return this;
+			return parent;
 		}
 
-		public ConditionBuilder like(String text, char escapeChar) {
+		public P like(String text, char escapeChar) {
 			// TODO use placeholder instead
 			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.LIKE,
 					new SqlRaw(OracleSqlUtils.escapeLikeString(text, escapeChar) + "'"));
-			return this;
+			return parent;
 		}
 
-		public ConditionBuilder like(String text) {
+		public P like(String text) {
 			// TODO use placeholder instead
 			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.LIKE,
 					new SqlRaw(OracleSqlUtils.toLiteralString(text)));
-			return this;
+			return parent;
 		}
 
 		@Override
@@ -811,9 +813,9 @@ public class OracleSql {
 			this.fromClause = fromClause;
 		}
 
-		public ConditionBuilder where(String lhs) {
+		public ConditionBuilder<SqlDeleteBuilder> where(String lhs) {
 			if (lhs == null) throw new IllegalArgumentException();
-			final ConditionBuilder res = new ConditionBuilder(lhs);
+			final ConditionBuilder<SqlDeleteBuilder> res = new ConditionBuilder<>(lhs, this);
 			whereClauses.add(res);
 			return res;
 		}
@@ -958,9 +960,9 @@ public class OracleSql {
 			return join(JoinType.FULL, joinClause);
 		}
 
-		public ConditionBuilder where(String lhs) {
+		public ConditionBuilder<SqlSelectBuilder> where(String lhs) {
 			if (lhs == null) throw new IllegalArgumentException();
-			final ConditionBuilder res = new ConditionBuilder(lhs);
+			final ConditionBuilder<SqlSelectBuilder> res = new ConditionBuilder<>(lhs, this);
 			whereClauses.add(res);
 			return res;
 		}
@@ -971,9 +973,9 @@ public class OracleSql {
 			return this;
 		}
 
-		public ConditionBuilder having(String lhs) {
+		public ConditionBuilder<SqlSelectBuilder> having(String lhs) {
 			if (lhs == null) throw new IllegalArgumentException();
-			final ConditionBuilder res = new ConditionBuilder(lhs);
+			final ConditionBuilder<SqlSelectBuilder> res = new ConditionBuilder<>(lhs, this);
 			havingClauses.add(res);
 			return res;
 		}
@@ -1202,9 +1204,9 @@ public class OracleSql {
 			return res;
 		}
 
-		public ConditionBuilder where(String lhs) {
+		public ConditionBuilder<SqlUpdateBuilder> where(String lhs) {
 			if (lhs == null) throw new IllegalArgumentException();
-			final ConditionBuilder res = new ConditionBuilder(lhs);
+			final ConditionBuilder<SqlUpdateBuilder> res = new ConditionBuilder<>(lhs, this);
 			whereClauses.add(res);
 			return res;
 		}
