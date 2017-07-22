@@ -45,11 +45,12 @@ update emp set
 SqlInsertBuilder builder = dsl.insertInto("emp");
 builder.values().set("ename").value("KING");
 builder.values().set("job").value("PRESIDENT");
+builder.values().set("hiredate").value(new java.sql.Date(new Date().getTime()));
 ```
 Generates the following statement:
 ```SQL
-insert into emp(ename, job)
-values (?  /* KING */, ?  /* PRESIDENT */)
+insert into emp(ename, job, hiredate)
+values (?  /* KING */, ?  /* PRESIDENT */, ?  /* 2017-07-22 */)
 ```
 
 ### Insert with subquery
