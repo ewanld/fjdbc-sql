@@ -175,7 +175,7 @@ where
 ```
 
 ## Batch statement examples
-### Stream to batch statement
+### Batch statement with input data coming from a Stream
 In this example, a Stream of strings is converted to a batch sequence of INSERT statements (using the addBatch method in JDBC).
 At no point in time the full data is held in memory.
 ```java
@@ -192,4 +192,11 @@ public void insertBatch() {
     String sql = createInsertStatement("").getSql();
     dsl.batchStatement(sql, stream).toStatement().executeAndCommit();
 }
+```
+### Batch statement with input data coming from a Collection
+This is the same example as previously, except the data come from a Collection instead of a Stream.
+```java
+List<String> values = Arrays.asList("SALES", "ACCOUNTING");
+List<SqlInsertBuilder> inserts = values.stream().map(MyClass::createInsertStatement).collect(Collectors.toList());
+dsl.batchStatement(inserts).toStatement().executeAndCommit();
 ```
