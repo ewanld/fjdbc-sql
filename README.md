@@ -173,3 +173,23 @@ from emp
 where
     ename in (?, ?)
 ```
+
+## Batch statement examples
+### Stream to batch statement
+In this example, a Stream of strings is converted to a batch sequence of INSERT statements (using the addBatch method in JDBC).
+At no point in time the full data is held in memory.
+```java
+private static SqlInsertBuilder createInsertStatement(String deptname) {
+	final SqlInsertBuilder builder = dsl.insertInto("dept");
+	builder.values().set("deptname").value(deptname);
+	return builder;
+}
+
+public void insertBatch() {
+    Stream<SqlInsertBuilder> stream = Files.lines(Paths.get("c:/my/file.txt")).map(MyClass::createInsertStatement);
+    // the empty string is used to generate the SQL, but anything else would
+    // have been fine since we are dealing with a prepared statement.
+    String sql = createInsertStatement("").getSql();
+    dsl.batchStatement(sql, stream).toStatement().executeAndCommit();
+}
+```
