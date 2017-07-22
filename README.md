@@ -1,5 +1,10 @@
 # fjdbc-sql
-A SQL statement generator for Java.
+A SQL statement generator for Java. 
+
+fjdbc-sql makes it easy to build complex SELECT, UPDATE, INSERT or DELETE statements without having to concatenate SQL string fragments.
+
+It handles regular and prepared statements, as well as batch statements.
+This project is built on top of FJDBC, a functional wrapper for JDBC.
 
 ## Quickstart
 
