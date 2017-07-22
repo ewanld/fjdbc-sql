@@ -1,5 +1,5 @@
 # fjdbc-sql
-A SQL statement generator for Java. 
+A safe SQL generator for Java. 
 
 fjdbc-sql makes it easy to build complex SELECT, UPDATE, INSERT or DELETE statements without having to concatenate SQL string fragments.
 
