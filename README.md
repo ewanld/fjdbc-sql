@@ -21,7 +21,8 @@ builder.toQuery(extractor).toList();  // returns ["KING"]
 
 ### Delete
 ```java
-dsl.deleteFrom("emp").where("job").notEq().value("SALESMAN");
+dsl.deleteFrom("emp")
+   .where("job").notEq().value("SALESMAN");
 ````
 Generates the following statement:
 ```SQL
@@ -63,4 +64,17 @@ Generates the following statement:
 insert into emp2 (ename, job)
 select ename, job
 from emp
+```
+
+### Aggregate functions
+```java
+dsl.select("job", "count(*)")
+   .from("emp")
+   .groupBy("job");
+```
+Generates the following statement:
+```SQL
+select job, count(*)
+from emp
+group by job
 ```
