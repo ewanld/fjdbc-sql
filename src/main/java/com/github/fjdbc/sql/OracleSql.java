@@ -25,7 +25,14 @@ import com.github.fjdbc.query.Query;
 import com.github.fjdbc.query.ResultSetExtractor;
 import com.github.fjdbc.util.IntSequence;
 
+/**
+ * SQL generator using a fluent interface..
+ */
 public class OracleSql {
+	/**
+	 * Debug statements by printing the value of prepared values in a comment
+	 * next to the '?' placeholder.
+	 */
 	final boolean debug;
 	final ConnectionProvider cnxProvider;
 
@@ -38,39 +45,64 @@ public class OracleSql {
 		this.debug = debug;
 	}
 
+	/**
+	 * Build a {@code SELECT} statement.
+	 */
 	public SqlSelectBuilder select() {
 		final SqlSelectBuilder res = new SqlSelectBuilder();
 		return res;
 	}
 
+	/**
+	 * Build a {@code SELECT} statement.
+	 */
 	public SqlSelectBuilder select(String... _selects) {
 		final SqlSelectBuilder res = new SqlSelectBuilder();
 		res.select(Arrays.asList(_selects));
 		return res;
 	}
 
+	/**
+	 * Convenience method to build a {@code SELECT DISTINCT} statement.
+	 */
 	public SqlSelectBuilder selectDistinct(String... _selects) {
 		final SqlSelectBuilder res = new SqlSelectBuilder().distinct();
 		res.select(Arrays.asList(_selects));
 		return res;
 	}
 
+	/**
+	 * Build a {@code SELECT} statement that starts with a {@code WITH} clause
+	 * (Oracle SQL only).
+	 */
 	public WithClauseBuilder with(String pseudoTableName) {
 		return new SqlSelectBuilder().with(pseudoTableName);
 	}
 
+	/**
+	 * Build an {@code UPDATE} statement.
+	 */
 	public SqlUpdateBuilder update(String tableName) {
 		return new SqlUpdateBuilder(tableName);
 	}
 
+	/**
+	 * Build a {@code DELETE} statement.
+	 */
 	public SqlDeleteBuilder deleteFrom(String fromClause) {
 		return new SqlDeleteBuilder(fromClause);
 	}
 
+	/**
+	 * Build an {@code INSERT} statement.
+	 */
 	public SqlInsertBuilder insertInto(String tableName) {
 		return new SqlInsertBuilder(tableName);
 	}
 
+	/**
+	 * Build a {@code MERGE} statement (Oracle SQL only).
+	 */
 	public SqlMergeBuilder mergeInto(String tableName) {
 		return new SqlMergeBuilder(tableName);
 	}
@@ -111,6 +143,9 @@ public class OracleSql {
 		return new CompositeSqlFragment(Arrays.asList(a, b), "minus\n");
 	}
 
+	public BatchStatementBuilder batchStatement() {
+		return new BatchStatementBuilder();
+	}
 	public enum RelationalOperator implements SqlFragment {
 		EQ("="),
 		NOT_EQ("<>"),
@@ -320,6 +355,12 @@ public class OracleSql {
 			w.append(wrapped);
 			if (increaseIndent) w.decreaseIndent();
 			w.append(after);
+		}
+
+		@Override
+		public void bind(PreparedStatement ps, IntSequence index)
+				throws SQLException {
+			wrapped.bind(ps, index);
 		}
 	}
 
@@ -673,7 +714,6 @@ public class OracleSql {
 		public final StatementOperation toStatement() {
 			return new StatementOperation(cnxProvider, getSql(), this);
 		}
-
 	}
 
 	public class SqlDeleteBuilder extends SqlStatementBuilder {
@@ -1276,6 +1316,44 @@ public class OracleSql {
 
 	}
 
+	/**
+	 * Represent a batch statement. Unlike in JDBC where a batch statement is
+	 * represented by a single {@link java.sql.Statement} object, here the
+	 * BatchStatement holds a collection of {@link SqlStatementBuilder} items.
+	 * <p>
+	 * Warning: each {@link SqlStatementBuilder} item must represent the same
+	 * SQL statement. Only the first statement will be converted to SQL.
+	 * <p>
+	 * At the moment, there is no check to actually make sure the SQL is the
+	 * same. This may change in the future.
+	 *
+	 */
+	public class BatchStatementBuilder extends SqlStatementBuilder {
+		private final Collection<SqlStatementBuilder> statements =
+				new ArrayList<>();
+
+		public void addStatement(SqlStatementBuilder statement) {
+			statements.add(statement);
+		}
+
+		@Override
+		public void appendTo(SqlStringBuilder w) {
+			if (statements.isEmpty())
+				return;
+			statements.iterator().next().appendTo(w);
+		}
+
+		@Override
+		public void bind(PreparedStatement ps, IntSequence index)
+				throws SQLException {
+			for (final SqlStatementBuilder s : statements) {
+				s.bind(ps, index);
+				ps.addBatch();
+				index.reset();
+			}
+		}
+
+	}
 	/**
 	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
