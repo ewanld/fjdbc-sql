@@ -6,6 +6,8 @@ fjdbc-sql makes it easy to build complex SELECT, UPDATE, INSERT or DELETE statem
 It handles regular and prepared statements, as well as batch statements.
 This project is built on top of FJDBC, a functional wrapper for JDBC.
 
+Latest version: 0.1.0.
+
 ## Quickstart
 
 ### Set up
