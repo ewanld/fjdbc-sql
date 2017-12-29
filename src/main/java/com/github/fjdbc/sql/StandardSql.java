@@ -96,6 +96,16 @@ import com.github.fjdbc.util.PreparedStatementEx;
  * <td>WINDOW</td>
  * <td>Not supported</td>
  * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>INNER|LEFT|RIGHT|FULL|CROSS JOIN</td>
+ * <td>Supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>NATURAL JOIN</td>
+ * <td>Not supported</td>
+ * </tr>
  * </table>
  */
 public class StandardSql {
