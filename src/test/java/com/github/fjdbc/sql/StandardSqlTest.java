@@ -147,6 +147,5 @@ public class StandardSqlTest {
 
 	public void tearDown() throws IOException {
 		writer.close();
-		System.out.println("tearDown");
 	}
 }
