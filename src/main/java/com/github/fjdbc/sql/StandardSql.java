@@ -31,6 +31,72 @@ import com.github.fjdbc.util.PreparedStatementEx;
 
 /**
  * SQL generator using a fluent interface.
+ * <p>
+ * It provides methods to generate the following types of statements:
+ * <ul>
+ * <li>SELECT
+ * <li>INSERT
+ * <li>UPDATE
+ * <li>DELETE
+ * <li>MERGE
+ * </ul>
+ * <p>
+ * The reference source used for the syntax is the
+ * <a href="https://ronsavage.github.io/SQL/sql-2003-2.bnf.html">SQL-2003 specification</a>.
+ * <p>
+ * The following syntactic elements are supported:
+ * <table border="1">
+ * <tr>
+ * <td>Statement type</td>
+ * <td>Clause</td>
+ * <td>Supported?</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>GROUP BY</td>
+ * <td>Supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>HAVING</td>
+ * <td>Supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>ORDER BY</td>
+ * <td>Supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>WITH ... SELECT ...</td>
+ * <td>Supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>WITH RECURSIVE ... SELECT ...</td>
+ * <td>Not supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>SELECT ... INTO ...</td>
+ * <td>Not supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>SELECT DISTINCT</td>
+ * <td>Supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>SELECT ALL</td>
+ * <td>Not supported</td>
+ * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>WINDOW</td>
+ * <td>Not supported</td>
+ * </tr>
+ * </table>
  */
 public class StandardSql {
 	/**
@@ -848,7 +914,7 @@ public class StandardSql {
 	}
 
 	public enum JoinType implements SqlFragment {
-		INNER("inner join"), LEFT("left join"), RIGHT("right join"), FULL("full join");
+		INNER("inner join"), LEFT("left join"), RIGHT("right join"), FULL("full join"), CROSS("cross join");
 
 		private final String sql;
 
@@ -1025,6 +1091,10 @@ public class StandardSql {
 
 		public SqlSelectBuilder fullJoin(String joinClause) {
 			return join(JoinType.FULL, joinClause);
+		}
+
+		public SqlSelectBuilder crossJoin(String joinClause) {
+			return join(JoinType.CROSS, joinClause);
 		}
 
 		public ConditionBuilder<SqlSelectBuilder> where(String lhs) {
