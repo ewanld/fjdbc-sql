@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 
 import org.apache.commons.io.FileUtils;
@@ -124,6 +125,11 @@ public class StandardSqlTest {
 			.where(sql.not(
 				sql.condition("a").eq().value(1)
 			))
+		);
+		writeSql(sql
+			.select("1")
+			.from("dual")
+			.where("a").in_String(Collections.emptyList())
 		);
 		//@formatter:on
 	}
