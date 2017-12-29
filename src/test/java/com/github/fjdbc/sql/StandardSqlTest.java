@@ -13,6 +13,12 @@ import org.apache.commons.io.FileUtils;
 import com.github.fjdbc.sql.StandardSql;
 import com.github.fjdbc.sql.StandardSql.SqlFragment;
 
+/**
+ * This class conforms to the POJO convention of maven surefire.
+ * <p>
+ * It writes SQL statements in the file StandardSqlTest-last.txt, then compares the content with a reference file
+ * (StandardSqlTest-ref.txt).
+ */
 public class StandardSqlTest {
 	private static final File last = new File(
 			StandardSqlTest.class.getClassLoader().getResource("StandardSqlTest-last.txt").getFile());
