@@ -21,13 +21,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.github.fjdbc.ConnectionProvider;
+import com.github.fjdbc.IntSequence;
 import com.github.fjdbc.RuntimeSQLException;
 import com.github.fjdbc.PreparedStatementBinder;
+import com.github.fjdbc.PreparedStatementEx;
 import com.github.fjdbc.op.StatementOperation;
 import com.github.fjdbc.query.Query;
 import com.github.fjdbc.query.ResultSetExtractor;
-import com.github.fjdbc.util.IntSequence;
-import com.github.fjdbc.util.PreparedStatementEx;
 
 /**
  * SQL generator using a fluent interface.
