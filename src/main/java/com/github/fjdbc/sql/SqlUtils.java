@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class OracleSqlUtils {
+public class SqlUtils {
 	/**
 	 * Partition a list into sublists of length L. The last list may have a size
 	 * smaller than L.<br>

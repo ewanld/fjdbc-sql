@@ -32,7 +32,7 @@ import com.github.fjdbc.util.PreparedStatementEx;
 /**
  * SQL generator using a fluent interface.
  */
-public class OracleSql {
+public class StandardSql {
 	/**
 	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
@@ -43,7 +43,7 @@ public class OracleSql {
 	 * @param cnxProvider
 	 *            The database connection provider.
 	 */
-	public OracleSql(ConnectionProvider cnxProvider) {
+	public StandardSql(ConnectionProvider cnxProvider) {
 		this(cnxProvider, false);
 	}
 
@@ -53,7 +53,7 @@ public class OracleSql {
 	 * @param debug
 	 *            Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
-	public OracleSql(ConnectionProvider cnxProvider, boolean debug) {
+	public StandardSql(ConnectionProvider cnxProvider, boolean debug) {
 		this.cnxProvider = cnxProvider;
 		this.debug = debug;
 	}
@@ -278,7 +278,7 @@ public class OracleSql {
 			} else {
 				final int maxItemsForInClause = 1000; // Oracle limit
 				final ArrayList<String> sqlClauses = new ArrayList<>(values.size() / 1000 + 1);
-				final List<List<String>> subCollections = OracleSqlUtils
+				final List<List<String>> subCollections = SqlUtils
 						.partition(Collections.nCopies(values.size(), "?"), maxItemsForInClause);
 				for (final List<String> subCollection : subCollections) {
 					sqlClauses.add(
@@ -425,7 +425,7 @@ public class OracleSql {
 			w.append(sql);
 			if (debug) {
 				w.append("  /* ");
-				w.append(value == null ? "null" : OracleSqlUtils.escapeComment(value.toString()));
+				w.append(value == null ? "null" : SqlUtils.escapeComment(value.toString()));
 				w.append(" */");
 			}
 		}
@@ -825,14 +825,14 @@ public class OracleSql {
 		public P like(String text, char escapeChar) {
 			// TODO use placeholder instead
 			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.LIKE,
-					new SqlRaw(OracleSqlUtils.escapeLikeString(text, escapeChar) + "'"));
+					new SqlRaw(SqlUtils.escapeLikeString(text, escapeChar) + "'"));
 			return parent;
 		}
 
 		public P like(String text) {
 			// TODO use placeholder instead
 			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.LIKE,
-					new SqlRaw(OracleSqlUtils.toLiteralString(text)));
+					new SqlRaw(SqlUtils.toLiteralString(text)));
 			return parent;
 		}
 
@@ -981,7 +981,7 @@ public class OracleSql {
 		}
 
 		public SqlSelectBuilder selectValue(String value) {
-			selects.add(new SqlRaw(OracleSqlUtils.toLiteralString(value)));
+			selects.add(new SqlRaw(SqlUtils.toLiteralString(value)));
 			return this;
 		}
 
