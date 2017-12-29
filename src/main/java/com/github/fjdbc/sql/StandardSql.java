@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.github.fjdbc.ConnectionProvider;
-import com.github.fjdbc.FjdbcException;
+import com.github.fjdbc.RuntimeSQLException;
 import com.github.fjdbc.PreparedStatementBinder;
 import com.github.fjdbc.op.StatementOperation;
 import com.github.fjdbc.query.Query;
@@ -1633,7 +1633,7 @@ public class StandardSql {
 		private final long executeEveryNRow;
 		private final long commitEveryNRow;
 		private BiConsumer<SQLException, T> errorHandler = (e, statement) -> {
-			throw new FjdbcException(e);
+			throw new RuntimeSQLException(e);
 		};
 
 		public StreamBackedBatchStatement(String sql, Stream<T> statements, final long executeEveryNRow,
