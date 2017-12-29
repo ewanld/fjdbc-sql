@@ -85,7 +85,7 @@ public class StandardSql {
 	}
 
 	/**
-	 * Build a {@code SELECT} statement that starts with a {@code WITH} clause (Oracle SQL only).
+	 * Build a {@code SELECT} statement that starts with a {@code WITH} clause.
 	 */
 	public WithClauseBuilder with(String pseudoTableName) {
 		return new SqlSelectBuilder().with(pseudoTableName);
@@ -113,7 +113,7 @@ public class StandardSql {
 	}
 
 	/**
-	 * Build a {@code MERGE} statement (Oracle SQL only).
+	 * Build a {@code MERGE} statement.
 	 */
 	public SqlMergeBuilder mergeInto(String tableName) {
 		return new SqlMergeBuilder(tableName);
@@ -278,8 +278,8 @@ public class StandardSql {
 			} else {
 				final int maxItemsForInClause = 1000; // Oracle limit
 				final ArrayList<String> sqlClauses = new ArrayList<>(values.size() / 1000 + 1);
-				final List<List<String>> subCollections = SqlUtils
-						.partition(Collections.nCopies(values.size(), "?"), maxItemsForInClause);
+				final List<List<String>> subCollections = SqlUtils.partition(Collections.nCopies(values.size(), "?"),
+						maxItemsForInClause);
 				for (final List<String> subCollection : subCollections) {
 					sqlClauses.add(
 							lhs.getSql() + " in (" + subCollection.stream().collect(Collectors.joining(", ")) + ")");
