@@ -277,7 +277,7 @@ public class StandardSql {
 				binder = null;
 			} else {
 				final int maxItemsForInClause = 1000; // Oracle limit
-				final ArrayList<String> sqlClauses = new ArrayList<>(values.size() / 1000 + 1);
+				final ArrayList<String> sqlClauses = new ArrayList<>(values.size() / maxItemsForInClause + 1);
 				final List<List<String>> subCollections = SqlUtils.partition(Collections.nCopies(values.size(), "?"),
 						maxItemsForInClause);
 				for (final List<String> subCollection : subCollections) {
