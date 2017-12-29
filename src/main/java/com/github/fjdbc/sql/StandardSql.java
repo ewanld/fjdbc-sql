@@ -1644,8 +1644,9 @@ public class StandardSql {
 			this.commitEveryNRow = commitEveryNRow;
 		}
 
-		public void setErrorHandler(BiConsumer<SQLException, T> errorHandler) {
+		public StreamBackedBatchStatement<T> setErrorHandler(BiConsumer<SQLException, T> errorHandler) {
 			this.errorHandler = errorHandler;
+			return this;
 		}
 
 		@Override
