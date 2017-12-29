@@ -398,18 +398,24 @@ public class OracleSql {
 		}
 	}
 
-	public class SqlSingleParameter<T> implements SqlFragment {
+	/**
+	 * Represents a PreparedStatement parameter.
+	 * 
+	 * @param <T>
+	 *            The type of the PreparedStatement parameter.
+	 */
+	public class SqlParameter<T> implements SqlFragment {
 		private final T value;
 		private final Class<T> type;
 		private final String sql;
 
-		public SqlSingleParameter(T value, Class<T> type) {
+		public SqlParameter(T value, Class<T> type) {
 			this("?", value, type);
 		}
 
-		public SqlSingleParameter(String sql, T value, Class<T> type) {
-			this.sql = sql;
-			assert sql != null && sql.contains("?");
+		public SqlParameter(String rawSql, T value, Class<T> type) {
+			this.sql = rawSql;
+			assert rawSql != null && rawSql.contains("?");
 			this.value = value;
 			this.type = type;
 		}
@@ -473,59 +479,54 @@ public class OracleSql {
 			this.parent = parent;
 		}
 
-		public <T> P value(TypedObject<T> typedObject) {
-			wrapped = new SqlSingleParameter<>(typedObject.get(), typedObject.getType());
-			return parent;
-		}
-
 		@SuppressWarnings("unchecked")
 		public <T> P value(Object value, Class<T> _class) {
 			if (value == null) {
-				wrapped = new SqlSingleParameter<>((T) value, null);
+				wrapped = new SqlParameter<>((T) value, null);
 			} else {
 				if (!value.getClass().equals(_class))
 					throw new IllegalArgumentException("Object must be of type: " + _class);
 				if (!PreparedStatementEx.jdbcTypes.contains(_class)) throw new IllegalArgumentException(String
 						.format("Invalid JDBC type: %s. Allowed types are: %s", _class, PreparedStatementEx.jdbcTypes));
-				wrapped = new SqlSingleParameter<>((T) value, _class);
+				wrapped = new SqlParameter<>((T) value, _class);
 			}
 			return parent;
 		}
 
 		// @formatter:off
-		public P value(String value) { wrapped = new SqlSingleParameter<>(value, String.class); return parent; }
-		public P value(BigDecimal value) { wrapped = new SqlSingleParameter<>(value, BigDecimal.class); return parent; }
-		public P value(Boolean value) { wrapped = new SqlSingleParameter<>(value, Boolean.class); return parent; }
-		public P value(Integer value) { wrapped = new SqlSingleParameter<>(value, Integer.class); return parent; }
-		public P value(Long value) { wrapped = new SqlSingleParameter<>(value, Long.class); return parent; }
-		public P value(Float value) { wrapped = new SqlSingleParameter<>(value, Float.class); return parent; }
-		public P value(Double value) { wrapped = new SqlSingleParameter<>(value, Double.class); return parent; }
-		public P value(byte[] value) { wrapped = new SqlSingleParameter<>(value, byte[].class); return parent; }
-		public P value(java.sql.Date value) { wrapped = new SqlSingleParameter<>(value, java.sql.Date.class); return parent; }
-		public P value(Time value) { wrapped = new SqlSingleParameter<>(value, Time.class); return parent; }
-		public P value(Timestamp value) { wrapped = new SqlSingleParameter<>(value, Timestamp.class); return parent; }
-		public P value(Clob value) { wrapped = new SqlSingleParameter<>(value, Clob.class); return parent; }
-		public P value(Blob value) { wrapped = new SqlSingleParameter<>(value, Blob.class); return parent; }
-		public P value(Array value) { wrapped = new SqlSingleParameter<>(value, Array.class); return parent; }
-		public P value(Ref value) { wrapped = new SqlSingleParameter<>(value, Ref.class); return parent; }
-		public P value(URL value) { wrapped = new SqlSingleParameter<>(value, URL.class); return parent; }
+		public P value(String value) { wrapped = new SqlParameter<>(value, String.class); return parent; }
+		public P value(BigDecimal value) { wrapped = new SqlParameter<>(value, BigDecimal.class); return parent; }
+		public P value(Boolean value) { wrapped = new SqlParameter<>(value, Boolean.class); return parent; }
+		public P value(Integer value) { wrapped = new SqlParameter<>(value, Integer.class); return parent; }
+		public P value(Long value) { wrapped = new SqlParameter<>(value, Long.class); return parent; }
+		public P value(Float value) { wrapped = new SqlParameter<>(value, Float.class); return parent; }
+		public P value(Double value) { wrapped = new SqlParameter<>(value, Double.class); return parent; }
+		public P value(byte[] value) { wrapped = new SqlParameter<>(value, byte[].class); return parent; }
+		public P value(java.sql.Date value) { wrapped = new SqlParameter<>(value, java.sql.Date.class); return parent; }
+		public P value(Time value) { wrapped = new SqlParameter<>(value, Time.class); return parent; }
+		public P value(Timestamp value) { wrapped = new SqlParameter<>(value, Timestamp.class); return parent; }
+		public P value(Clob value) { wrapped = new SqlParameter<>(value, Clob.class); return parent; }
+		public P value(Blob value) { wrapped = new SqlParameter<>(value, Blob.class); return parent; }
+		public P value(Array value) { wrapped = new SqlParameter<>(value, Array.class); return parent; }
+		public P value(Ref value) { wrapped = new SqlParameter<>(value, Ref.class); return parent; }
+		public P value(URL value) { wrapped = new SqlParameter<>(value, URL.class); return parent; }
 		
-		public P value(String sql, String value) { wrapped = new SqlSingleParameter<>(sql, value, String.class); return parent; }
-		public P value(String sql, BigDecimal value) { wrapped = new SqlSingleParameter<>(sql, value, BigDecimal.class); return parent; }
-		public P value(String sql, Boolean value) { wrapped = new SqlSingleParameter<>(sql, value, Boolean.class); return parent; }
-		public P value(String sql, Integer value) { wrapped = new SqlSingleParameter<>(sql, value, Integer.class); return parent; }
-		public P value(String sql, Long value) { wrapped = new SqlSingleParameter<>(sql, value, Long.class); return parent; }
-		public P value(String sql, Float value) { wrapped = new SqlSingleParameter<>(sql, value, Float.class); return parent; }
-		public P value(String sql, Double value) { wrapped = new SqlSingleParameter<>(sql, value, Double.class); return parent; }
-		public P value(String sql, byte[] value) { wrapped = new SqlSingleParameter<>(sql, value, byte[].class); return parent; }
-		public P value(String sql, java.sql.Date value) { wrapped = new SqlSingleParameter<>(sql, value, java.sql.Date.class); return parent; }
-		public P value(String sql, Time value) { wrapped = new SqlSingleParameter<>(sql, value, Time.class); return parent; }
-		public P value(String sql, Timestamp value) { wrapped = new SqlSingleParameter<>(sql, value, Timestamp.class); return parent; }
-		public P value(String sql, Clob value) { wrapped = new SqlSingleParameter<>(sql, value, Clob.class); return parent; }
-		public P value(String sql, Blob value) { wrapped = new SqlSingleParameter<>(sql, value, Blob.class); return parent; }
-		public P value(String sql, Array value) { wrapped = new SqlSingleParameter<>(sql, value, Array.class); return parent; }
-		public P value(String sql, Ref value) { wrapped = new SqlSingleParameter<>(sql, value, Ref.class); return parent; }
-		public P value(String sql, URL value) { wrapped = new SqlSingleParameter<>(sql, value, URL.class); return parent; }
+		public P value(String sql, String value) { wrapped = new SqlParameter<>(sql, value, String.class); return parent; }
+		public P value(String sql, BigDecimal value) { wrapped = new SqlParameter<>(sql, value, BigDecimal.class); return parent; }
+		public P value(String sql, Boolean value) { wrapped = new SqlParameter<>(sql, value, Boolean.class); return parent; }
+		public P value(String sql, Integer value) { wrapped = new SqlParameter<>(sql, value, Integer.class); return parent; }
+		public P value(String sql, Long value) { wrapped = new SqlParameter<>(sql, value, Long.class); return parent; }
+		public P value(String sql, Float value) { wrapped = new SqlParameter<>(sql, value, Float.class); return parent; }
+		public P value(String sql, Double value) { wrapped = new SqlParameter<>(sql, value, Double.class); return parent; }
+		public P value(String sql, byte[] value) { wrapped = new SqlParameter<>(sql, value, byte[].class); return parent; }
+		public P value(String sql, java.sql.Date value) { wrapped = new SqlParameter<>(sql, value, java.sql.Date.class); return parent; }
+		public P value(String sql, Time value) { wrapped = new SqlParameter<>(sql, value, Time.class); return parent; }
+		public P value(String sql, Timestamp value) { wrapped = new SqlParameter<>(sql, value, Timestamp.class); return parent; }
+		public P value(String sql, Clob value) { wrapped = new SqlParameter<>(sql, value, Clob.class); return parent; }
+		public P value(String sql, Blob value) { wrapped = new SqlParameter<>(sql, value, Blob.class); return parent; }
+		public P value(String sql, Array value) { wrapped = new SqlParameter<>(sql, value, Array.class); return parent; }
+		public P value(String sql, Ref value) { wrapped = new SqlParameter<>(sql, value, Ref.class); return parent; }
+		public P value(String sql, URL value) { wrapped = new SqlParameter<>(sql, value, URL.class); return parent; }
 		// @formatter:on
 
 		public P raw(String _sql) {
@@ -716,13 +717,13 @@ public class OracleSql {
 			if (conditions.size() == 0) {
 				w.append("1=1");
 			} else {
-			if (conditions.size() > 1) w.append("(");
-			forEach_endAware(conditions, (c, first, last) -> {
-				w.append(c);
-				if (!last) w.append(" ").append(operator).append(" ");
-			});
-			if (conditions.size() > 1) w.append(")");
-		}
+				if (conditions.size() > 1) w.append("(");
+				forEach_endAware(conditions, (c, first, last) -> {
+					w.append(c);
+					if (!last) w.append(" ").append(operator).append(" ");
+				});
+				if (conditions.size() > 1) w.append(")");
+			}
 		}
 
 	}
