@@ -292,9 +292,18 @@ public class StandardSql {
 
 	/**
 	 * Build a {@code SELECT} statement that represents {@code a MINUS b}.
+	 * <p>
+	 * Oracle-specific; use {@link #except} for standard SQL.
 	 */
 	public SqlSelectStatement minus(SqlSelectBuilder a, SqlSelectBuilder b) {
 		return new CompositeSqlSelectStatement(Arrays.asList(a, b), "minus\n");
+	}
+
+	/**
+	 * Build a {@code SELECT} statement that represents {@code a EXCEPT b}.
+	 */
+	public SqlSelectStatement except(SqlSelectBuilder a, SqlSelectBuilder b) {
+		return new CompositeSqlSelectStatement(Arrays.asList(a, b), "except\n");
 	}
 
 	/**

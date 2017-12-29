@@ -110,6 +110,14 @@ public class StandardSqlTest {
 			sql.select("1").from("dual"),
 			sql.select("1").from("dual"))
 		);
+		writeSql(sql.minus(
+			sql.select("1").from("dual"),
+			sql.select("1").from("dual"))
+		);
+		writeSql(sql.except(
+			sql.select("1").from("dual"),
+			sql.select("1").from("dual"))
+		);
 		writeSql(sql
 			.select("1")
 			.from("dual")

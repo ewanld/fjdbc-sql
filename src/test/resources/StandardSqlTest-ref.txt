@@ -99,6 +99,20 @@ from dual
 
 select 1
 from dual
+minus
+select 1
+from dual
+
+
+select 1
+from dual
+except
+select 1
+from dual
+
+
+select 1
+from dual
 where
     not (
         a = ?  /* 1 */
