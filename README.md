@@ -194,7 +194,9 @@ final Stream<SqlInsertBuilder> stream = Files.lines(Paths.get("c:/my/file.txt"))
 // have been fine since we are dealing with a prepared statement.
 final String sqlString = createInsertStatement("").getSql();
 sql.batchStatement(sqlString, stream).toStatement().executeAndCommit();
+```
 
+```java
 private static SqlInsertBuilder createInsertStatement(String deptname) {
 	final SqlInsertBuilder builder = sql.insertInto("dept");
 	builder.values().set("deptname").value(deptname);
