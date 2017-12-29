@@ -1,0 +1,107 @@
+select a, b
+from table1
+
+
+select a, b
+from table1
+where
+    a >= ?  /* 1 */
+
+
+select a, b
+from table1
+where
+    a > ?  /* 1 */
+    and b = ?  /* toto */
+
+
+select a, b
+from table1
+where
+    (a < ?  /* 1 */ or b <> ?  /* toto */)
+
+
+select a, b
+from table1
+where
+    (a > ?  /* 2.05 */ and b is not null)
+
+
+select a, b
+from table1
+where
+    a in (
+        select a
+        from table2
+    )
+    and c > all (
+        select c
+        from table3
+    )
+    and d < any (
+        select d
+        from table4
+    )
+
+
+select a, b
+from table1
+where
+    a = (
+        select 1
+        from dual
+    )
+
+
+select count(*)
+from table1
+having
+    count(*) >= ?  /* 2 */
+
+
+with t as (
+    select a
+    from table2
+)
+select t.a, b
+from table1
+inner join t on table1.b = t.a
+
+
+delete from table1
+where
+    a <= 1+1
+
+
+update table1 set
+    a = ?  /* 1 */
+
+
+update table1 set
+    a = ?  /* 1 */
+where
+    a is null
+
+
+merge into table1 using dual on (
+    a = ?  /* 2 */
+)
+when matched then update set
+    b = ?  /* 3 */
+when not matched then insert (a, b, c) values (?  /* 2 */, ?  /* 3 */, ?  /* 2010-03-03 */)
+
+select 1
+from dual
+union
+select 1
+from dual
+
+
+select 1
+from dual
+where
+    not (
+        a = ?  /* 1 */
+    )
+
+
