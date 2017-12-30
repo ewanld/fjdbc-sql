@@ -12,7 +12,9 @@ import java.util.GregorianCalendar;
 import org.apache.commons.io.FileUtils;
 
 import com.github.fjdbc.sql.StandardSql;
+import com.github.fjdbc.sql.StandardSql.Placement;
 import com.github.fjdbc.sql.StandardSql.SqlFragment;
+import com.github.fjdbc.sql.StandardSql.SqlSelectClause;
 
 /**
  * This class conforms to the POJO convention of maven surefire.
@@ -131,6 +133,12 @@ public class StandardSqlTest {
 			.from("dual")
 			.where("a").in_String(Collections.emptyList())
 		);
+		writeSql(sql
+				.select("1")
+				.raw(Placement.AFTER_KEYWORD, SqlSelectClause.SELECT, "raw_after_select")
+				.raw(Placement.AFTER_KEYWORD, SqlSelectClause.SELECT, "raw_after_select2")
+				.from("dual")
+				);
 		//@formatter:on
 	}
 

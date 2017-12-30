@@ -116,6 +116,11 @@ import com.github.fjdbc.query.ResultSetExtractor;
  * <td>SELECT ... FROM ... TABLESAMPLE ...</td>
  * <td>Supported</td>
  * </tr>
+ * <tr>
+ * <td>SELECT</td>
+ * <td>UNION CORRESPONDING</td>
+ * <td>Not supported</td>
+ * </tr>
  * </table>
  */
 public class StandardSql {
@@ -606,22 +611,22 @@ public class StandardSql {
 		public P value(Ref value) { wrapped = new SqlParameter<>(value, Ref.class); return parent; }
 		public P value(URL value) { wrapped = new SqlParameter<>(value, URL.class); return parent; }
 		
-		public P value(String sql, String value) { wrapped = new SqlParameter<>(sql, value, String.class); return parent; }
-		public P value(String sql, BigDecimal value) { wrapped = new SqlParameter<>(sql, value, BigDecimal.class); return parent; }
-		public P value(String sql, Boolean value) { wrapped = new SqlParameter<>(sql, value, Boolean.class); return parent; }
-		public P value(String sql, Integer value) { wrapped = new SqlParameter<>(sql, value, Integer.class); return parent; }
-		public P value(String sql, Long value) { wrapped = new SqlParameter<>(sql, value, Long.class); return parent; }
-		public P value(String sql, Float value) { wrapped = new SqlParameter<>(sql, value, Float.class); return parent; }
-		public P value(String sql, Double value) { wrapped = new SqlParameter<>(sql, value, Double.class); return parent; }
-		public P value(String sql, byte[] value) { wrapped = new SqlParameter<>(sql, value, byte[].class); return parent; }
-		public P value(String sql, java.sql.Date value) { wrapped = new SqlParameter<>(sql, value, java.sql.Date.class); return parent; }
-		public P value(String sql, Time value) { wrapped = new SqlParameter<>(sql, value, Time.class); return parent; }
-		public P value(String sql, Timestamp value) { wrapped = new SqlParameter<>(sql, value, Timestamp.class); return parent; }
-		public P value(String sql, Clob value) { wrapped = new SqlParameter<>(sql, value, Clob.class); return parent; }
-		public P value(String sql, Blob value) { wrapped = new SqlParameter<>(sql, value, Blob.class); return parent; }
-		public P value(String sql, Array value) { wrapped = new SqlParameter<>(sql, value, Array.class); return parent; }
-		public P value(String sql, Ref value) { wrapped = new SqlParameter<>(sql, value, Ref.class); return parent; }
-		public P value(String sql, URL value) { wrapped = new SqlParameter<>(sql, value, URL.class); return parent; }
+		public P raw(String sql, String value) { wrapped = new SqlParameter<>(sql, value, String.class); return parent; }
+		public P raw(String sql, BigDecimal value) { wrapped = new SqlParameter<>(sql, value, BigDecimal.class); return parent; }
+		public P raw(String sql, Boolean value) { wrapped = new SqlParameter<>(sql, value, Boolean.class); return parent; }
+		public P raw(String sql, Integer value) { wrapped = new SqlParameter<>(sql, value, Integer.class); return parent; }
+		public P raw(String sql, Long value) { wrapped = new SqlParameter<>(sql, value, Long.class); return parent; }
+		public P raw(String sql, Float value) { wrapped = new SqlParameter<>(sql, value, Float.class); return parent; }
+		public P raw(String sql, Double value) { wrapped = new SqlParameter<>(sql, value, Double.class); return parent; }
+		public P raw(String sql, byte[] value) { wrapped = new SqlParameter<>(sql, value, byte[].class); return parent; }
+		public P raw(String sql, java.sql.Date value) { wrapped = new SqlParameter<>(sql, value, java.sql.Date.class); return parent; }
+		public P raw(String sql, Time value) { wrapped = new SqlParameter<>(sql, value, Time.class); return parent; }
+		public P raw(String sql, Timestamp value) { wrapped = new SqlParameter<>(sql, value, Timestamp.class); return parent; }
+		public P raw(String sql, Clob value) { wrapped = new SqlParameter<>(sql, value, Clob.class); return parent; }
+		public P raw(String sql, Blob value) { wrapped = new SqlParameter<>(sql, value, Blob.class); return parent; }
+		public P raw(String sql, Array value) { wrapped = new SqlParameter<>(sql, value, Array.class); return parent; }
+		public P raw(String sql, Ref value) { wrapped = new SqlParameter<>(sql, value, Ref.class); return parent; }
+		public P raw(String sql, URL value) { wrapped = new SqlParameter<>(sql, value, URL.class); return parent; }
 		// @formatter:on
 
 		public P raw(String _sql) {
@@ -1053,19 +1058,82 @@ public class StandardSql {
 		}
 	}
 
+	public enum Placement {
+		BEFORE_KEYWORD, AFTER_KEYWORD, AFTER_EXPRESSION
+	};
+
+	public enum SqlSelectClause implements SqlFragment {
+		WITH("with"),
+		SELECT("select"),
+		FROM("from"),
+		WHERE("where"),
+		GROUP_BY("group by"),
+		HAVING("having"),
+		ORDER_BY("order by");
+
+		private final String sql;
+
+		SqlSelectClause(String sql) {
+			this.sql = sql;
+		}
+
+		@Override
+		public String getSql() {
+			return sql;
+		}
+
+		@Override
+		public void appendTo(SqlStringBuilder w) {
+			w.append(sql);
+		}
+	}
+
+	public static class SqlRawMap {
+		private final List<List<SqlRaw>> rawClauses;
+		private static final int totalLocationCount = SqlSelectClause.values().length;
+
+		public SqlRawMap() {
+			final int keyCount = Placement.values().length * SqlSelectClause.values().length;
+			rawClauses = new ArrayList<>(keyCount);
+			for (int i = 0; i < keyCount; i++) {
+				rawClauses.add(null);
+			}
+		}
+
+		private int getIndex(Placement placement, SqlSelectClause location) {
+			return placement.ordinal() * totalLocationCount + location.ordinal();
+		}
+
+		public List<SqlRaw> get(Placement placement, SqlSelectClause location) {
+			final int index = getIndex(placement, location);
+			final List<SqlRaw> clauses = rawClauses.get(index);
+			return clauses == null ? Collections.emptyList() : clauses;
+		}
+
+		public void add(Placement placement, SqlSelectClause location, SqlRaw clause) {
+			final int index = getIndex(placement, location);
+			List<SqlRaw> clauses = rawClauses.get(index);
+			if (clauses == null) {
+				clauses = new ArrayList<>(1);
+				rawClauses.set(index, clauses);
+			}
+			clauses.add(clause);
+		}
+	}
+
 	public class SqlSelectBuilder extends SqlSelectStatement {
-		private boolean distinct;
-		private final Collection<WithClauseBuilder> withClauses = new ArrayList<>();
-		private final Collection<SqlFragment> selects = new ArrayList<>();
+		private final Collection<SqlFragment> withClauses = new ArrayList<>();
+		private final Collection<SqlFragment> selectClauses = new ArrayList<>();
+		private String fromClause;
 		private final Collection<String> joinClauses = new ArrayList<>();
-		private final Collection<String> groupByClauses = new ArrayList<>();
-		private final Collection<String> orderByClauses = new ArrayList<>();
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 		private final Collection<SqlFragment> havingClauses = new ArrayList<>();
-		private String fromClause;
+		private final Collection<SqlFragment> groupByClauses = new ArrayList<>();
+		private final Collection<SqlFragment> orderByClauses = new ArrayList<>();
+		private final SqlRawMap additionalClauses = new SqlRawMap();
 
 		public SqlSelectBuilder distinct() {
-			distinct = true;
+			additionalClauses.add(Placement.AFTER_KEYWORD, SqlSelectClause.SELECT, new SqlRaw("distinct"));
 			return this;
 		}
 
@@ -1076,12 +1144,12 @@ public class StandardSql {
 		}
 
 		public SqlSelectBuilder selectValue(String value) {
-			selects.add(new SqlRaw(SqlUtils.toLiteralString(value)));
+			selectClauses.add(new SqlRaw(SqlUtils.toLiteralString(value)));
 			return this;
 		}
 
 		public SqlSelectBuilder select(String _selectClause) {
-			selects.add(new SqlRaw(_selectClause));
+			selectClauses.add(new SqlRaw(_selectClause));
 			return this;
 		}
 
@@ -1090,7 +1158,7 @@ public class StandardSql {
 		}
 
 		public SqlSelectBuilder select(Collection<String> _selects) {
-			this.selects.addAll(_selects.stream().map(SqlRaw::new).collect(Collectors.toList()));
+			this.selectClauses.addAll(_selects.stream().map(SqlRaw::new).collect(Collectors.toList()));
 			return this;
 		}
 
@@ -1152,58 +1220,89 @@ public class StandardSql {
 		}
 
 		public SqlSelectBuilder groupBy(String... _groupByClauses) {
-			groupByClauses.addAll(Arrays.asList(_groupByClauses));
+			for (final String f : _groupByClauses) {
+				groupByClauses.add(new SqlRaw(f));
+			}
 			return this;
 		}
 
 		public SqlSelectBuilder orderBy(String... _orderByClauses) {
-			orderByClauses.addAll(Arrays.asList(_orderByClauses));
+			for (final String f : _orderByClauses) {
+				orderByClauses.add(new SqlRaw(f));
+			}
 			return this;
+		}
+
+		public SqlSelectBuilder raw(Placement placement, SqlSelectClause location, String _sql,
+				PreparedStatementBinder binder) {
+			final SqlRaw clause = new SqlRaw(_sql, binder);
+			additionalClauses.add(placement, location, clause);
+			return this;
+		}
+
+		public SqlSelectBuilder raw(Placement placement, SqlSelectClause location, String _sql) {
+			return raw(placement, location, _sql, null);
+		}
+
+		private void writeClause(SqlStringBuilder w, SqlSelectClause clause,
+				Collection<? extends SqlFragment> fragments, boolean newline, String joinString) {
+			additionalClauses.get(Placement.BEFORE_KEYWORD, clause).forEach(i -> w.append(i).append(" "));
+			if (!fragments.isEmpty()) {
+				w.append(clause);
+				additionalClauses.get(Placement.AFTER_KEYWORD, clause).forEach(i -> w.append(" ").append(i));
+				if (newline && fragments.size() > 1) {
+					w.appendln();
+					w.increaseIndent();
+				} else {
+					w.append(" ");
+				}
+				forEach_endAware(fragments, (fragment, first, last) -> {
+					if (newline)
+						w.appendln(fragment);
+					else w.append(fragment);
+					if (!last) w.append(joinString);
+				});
+				if (newline) {
+					if (fragments.size() > 1) w.decreaseIndent();
+				} else {
+					w.appendln();
+				}
+			}
+			additionalClauses.get(Placement.AFTER_EXPRESSION, clause).forEach(i -> w.append(i).append(" "));
 		}
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
-			if (!withClauses.isEmpty()) {
-				w.append("with ");
-				w.appendln(withClauses.stream().map(SqlFragment::getSql).collect(Collectors.joining(",\n")));
-			}
-			w.append("select ");
-			if (distinct) w.append("distinct ");
-			w.appendln(selects.stream().map(SqlFragment::getSql).collect(Collectors.joining(", ")));
-			w.append("from ").appendln(fromClause);
-			joinClauses.forEach(i -> w.appendln(i));
-			if (!whereClauses.isEmpty()) {
-				w.appendln("where");
-				w.increaseIndent();
-				forEach_endAware(whereClauses, (clause, first, last) -> {
-					w.appendln(clause);
-					if (!last) w.append("and ");
-				});
-				w.decreaseIndent();
-			}
-			if (!groupByClauses.isEmpty()) {
-				final String groupBy_str = groupByClauses.stream().collect(Collectors.joining(", "));
-				w.append("group by ").appendln(groupBy_str);
-			}
-			if (!havingClauses.isEmpty()) {
-				w.appendln("having");
-				w.increaseIndent();
-				forEach_endAware(havingClauses, (clause, first, last) -> {
-					w.appendln(clause);
-					if (!last) w.append("and ");
-				});
-				w.decreaseIndent();
-			}
-			if (!orderByClauses.isEmpty()) {
-				final String orderBy_str = orderByClauses.stream().collect(Collectors.joining(", "));
-				w.append("order by ").appendln(orderBy_str);
-			}
+			// with
+			writeClause(w, SqlSelectClause.WITH, withClauses, true, ",");
+
+			// select
+			writeClause(w, SqlSelectClause.SELECT, selectClauses, false, ", ");
+
+			// from
+			additionalClauses.get(Placement.BEFORE_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
+			w.append(SqlSelectClause.FROM).append(" ").appendln(fromClause);
+			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
+			joinClauses.forEach(w::appendln);
+			additionalClauses.get(Placement.AFTER_EXPRESSION, SqlSelectClause.FROM).forEach(w::appendln);
+
+			// where
+			writeClause(w, SqlSelectClause.WHERE, whereClauses, true, "and ");
+
+			// group by
+			writeClause(w, SqlSelectClause.GROUP_BY, groupByClauses, false, ", ");
+
+			// having
+			writeClause(w, SqlSelectClause.HAVING, havingClauses, true, "and ");
+
+			// order by
+			writeClause(w, SqlSelectClause.ORDER_BY, orderByClauses, false, ", ");
 		}
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
 			final CompositeIterator<SqlFragment> fragmentsIterator = new CompositeIterator<>(
-					Arrays.asList(selects.iterator(), whereClauses.iterator(), havingClauses.iterator()));
+					Arrays.asList(selectClauses.iterator(), whereClauses.iterator(), havingClauses.iterator()));
 			while (fragmentsIterator.hasNext()) {
 				fragmentsIterator.next().bind(ps, index);
 			}
