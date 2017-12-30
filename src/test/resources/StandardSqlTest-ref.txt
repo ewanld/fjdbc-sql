@@ -118,7 +118,11 @@ from dual
 where 1=0
 
 
+raw_before_select
 select raw_after_select raw_after_select2 1
-from dual
+raw_after_select_expr
+raw_before_from
+from raw_after_from dual
+raw_after_from_expr
 
 

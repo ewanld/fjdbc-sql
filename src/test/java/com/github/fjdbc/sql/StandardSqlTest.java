@@ -135,9 +135,14 @@ public class StandardSqlTest {
 		);
 		writeSql(sql
 				.select("1")
+				.raw(Placement.BEFORE_KEYWORD, SqlSelectClause.SELECT, "raw_before_select")
 				.raw(Placement.AFTER_KEYWORD, SqlSelectClause.SELECT, "raw_after_select")
 				.raw(Placement.AFTER_KEYWORD, SqlSelectClause.SELECT, "raw_after_select2")
+				.raw(Placement.AFTER_EXPRESSION, SqlSelectClause.SELECT, "raw_after_select_expr")
+				.raw(Placement.BEFORE_KEYWORD, SqlSelectClause.FROM, "raw_before_from")
 				.from("dual")
+				.raw(Placement.AFTER_KEYWORD, SqlSelectClause.FROM, "raw_after_from")
+				.raw(Placement.AFTER_EXPRESSION, SqlSelectClause.FROM, "raw_after_from_expr")
 				);
 		//@formatter:on
 	}

@@ -1246,7 +1246,7 @@ public class StandardSql {
 
 		private void writeClause(SqlStringBuilder w, SqlSelectClause clause,
 				Collection<? extends SqlFragment> fragments, boolean newline, String joinString) {
-			additionalClauses.get(Placement.BEFORE_KEYWORD, clause).forEach(i -> w.append(i).append(" "));
+			additionalClauses.get(Placement.BEFORE_KEYWORD, clause).forEach(w::appendln);
 			if (!fragments.isEmpty()) {
 				w.append(clause);
 				additionalClauses.get(Placement.AFTER_KEYWORD, clause).forEach(i -> w.append(" ").append(i));
@@ -1267,8 +1267,10 @@ public class StandardSql {
 				} else {
 					w.appendln();
 				}
+			} else {
+				additionalClauses.get(Placement.AFTER_KEYWORD, clause).forEach(w::appendln);
 			}
-			additionalClauses.get(Placement.AFTER_EXPRESSION, clause).forEach(i -> w.append(i).append(" "));
+			additionalClauses.get(Placement.AFTER_EXPRESSION, clause).forEach(w::appendln);
 		}
 
 		@Override
@@ -1281,8 +1283,9 @@ public class StandardSql {
 
 			// from
 			additionalClauses.get(Placement.BEFORE_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
-			w.append(SqlSelectClause.FROM).append(" ").appendln(fromClause);
-			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
+			w.append(SqlSelectClause.FROM).append(" ");
+			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM).forEach(i -> w.append(i).append(" "));
+			w.appendln(fromClause);
 			joinClauses.forEach(w::appendln);
 			additionalClauses.get(Placement.AFTER_EXPRESSION, SqlSelectClause.FROM).forEach(w::appendln);
 
