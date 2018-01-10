@@ -265,6 +265,10 @@ public class StandardSql {
 		return new NotCondition(condition);
 	}
 
+	public Condition exists(SqlSelectStatement subquery) {
+		return new ExistsCondition(subquery);
+	}
+
 	/**
 	 * Build a {@code SELECT} statement that is the {@code UNION} of all specified {@SELECT} statements.
 	 * 
@@ -533,6 +537,13 @@ public class StandardSql {
 		@Override
 		public void bind(PreparedStatement st, IntSequence index) throws SQLException {
 			setAnyObject(st, index.next(), value, type);
+		}
+	}
+
+	public static class ExistsCondition extends SqlFragmentWrapper implements Condition {
+
+		public ExistsCondition(SqlSelectStatement wrapped) {
+			super("exists (", wrapped, ")", true);
 		}
 	}
 
@@ -1088,7 +1099,10 @@ public class StandardSql {
 		}
 	}
 
-	public static class SqlRawMap {
+	/**
+	 * Store additional raw clauses used in SELECT statements.
+	 */
+	private static class SqlRawMap {
 		private final List<List<SqlRaw>> rawClauses;
 		private static final int totalLocationCount = SqlSelectClause.values().length;
 
@@ -1275,13 +1289,9 @@ public class StandardSql {
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
-			// with
 			writeClause(w, SqlSelectClause.WITH, withClauses, true, ",");
-
-			// select
 			writeClause(w, SqlSelectClause.SELECT, selectClauses, false, ", ");
 
-			// from
 			additionalClauses.get(Placement.BEFORE_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
 			w.append(SqlSelectClause.FROM).append(" ");
 			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM).forEach(i -> w.append(i).append(" "));
@@ -1289,16 +1299,9 @@ public class StandardSql {
 			joinClauses.forEach(w::appendln);
 			additionalClauses.get(Placement.AFTER_EXPRESSION, SqlSelectClause.FROM).forEach(w::appendln);
 
-			// where
 			writeClause(w, SqlSelectClause.WHERE, whereClauses, true, "and ");
-
-			// group by
 			writeClause(w, SqlSelectClause.GROUP_BY, groupByClauses, false, ", ");
-
-			// having
 			writeClause(w, SqlSelectClause.HAVING, havingClauses, true, "and ");
-
-			// order by
 			writeClause(w, SqlSelectClause.ORDER_BY, orderByClauses, false, ", ");
 		}
 
