@@ -47,7 +47,7 @@ import com.github.fjdbc.query.ResultSetExtractor;
  * The following syntactic elements are supported:
  * <table border="1">
  * <tr>
- * <td>Statement type</td>
+ * <td>Element</td>
  * <td>Clause</td>
  * <td>Supported?</td>
  * </tr>
@@ -132,7 +132,7 @@ public class StandardSql {
 
 	/**
 	 * @param cnxProvider
-	 *            The database connection provider.
+	 *        The database connection provider.
 	 */
 	public StandardSql(ConnectionProvider cnxProvider) {
 		this(cnxProvider, false);
@@ -140,9 +140,9 @@ public class StandardSql {
 
 	/**
 	 * @param cnxProvider
-	 *            The database connection provider.
+	 *        The database connection provider.
 	 * @param debug
-	 *            Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
+	 *        Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
 	public StandardSql(ConnectionProvider cnxProvider, boolean debug) {
 		this.cnxProvider = cnxProvider;
@@ -212,9 +212,8 @@ public class StandardSql {
 
 	/**
 	 * Build an SQL condition, to use in {@code WHERE} clauses for instance.
-	 * 
 	 * @param lhs
-	 *            The left-hand side of the condition.
+	 *        The left-hand side of the condition.
 	 */
 	public ConditionBuilder<Condition> condition(String lhs) {
 		final ConditionBuilder<Condition> res = new ConditionBuilder<>(lhs, null);
@@ -243,9 +242,8 @@ public class StandardSql {
 
 	/**
 	 * Build an {@code AND} condition.
-	 * 
 	 * @param conditions
-	 *            The conditions to be joined with the {@code AND} operator.
+	 *        The conditions to be joined with the {@code AND} operator.
 	 */
 	public CompositeConditionBuilder and(Condition... conditions) {
 		return new CompositeConditionBuilder(Arrays.asList(conditions), LogicalOperator.AND);
@@ -253,9 +251,8 @@ public class StandardSql {
 
 	/**
 	 * Build an {@code OR} condition.
-	 * 
 	 * @param conditions
-	 *            The conditions to be joined with the {@code OR} operator.
+	 *        The conditions to be joined with the {@code OR} operator.
 	 */
 	public CompositeConditionBuilder or(Condition... conditions) {
 		return new CompositeConditionBuilder(Arrays.asList(conditions), LogicalOperator.OR);
@@ -271,9 +268,8 @@ public class StandardSql {
 
 	/**
 	 * Build a {@code SELECT} statement that is the {@code UNION} of all specified {@SELECT} statements.
-	 * 
 	 * @param selects
-	 *            The {@code SELECT} statements to join.
+	 *        The {@code SELECT} statements to join.
 	 */
 	public SqlSelectStatement union(SqlSelectBuilder... selects) {
 		return new CompositeSqlSelectStatement(Arrays.asList(selects), "union\n");
@@ -281,9 +277,8 @@ public class StandardSql {
 
 	/**
 	 * Build a {@code SELECT} statement that is the {@code UNION ALL} of all specified {@SELECT} statements.
-	 * 
 	 * @param selects
-	 *            The {@code SELECT} statements to join.
+	 *        The {@code SELECT} statements to join.
 	 */
 	public SqlSelectStatement unionAll(SqlSelectBuilder... selects) {
 		return new CompositeSqlSelectStatement(Arrays.asList(selects), "union all\n");
@@ -291,9 +286,8 @@ public class StandardSql {
 
 	/**
 	 * Build a {@code SELECT} statement that is the intersection of all specified {@code SELECT} statements.
-	 * 
 	 * @param selects
-	 *            The {@code SELECT} statements to join with the {@code INTERSECT} operator.
+	 *        The {@code SELECT} statements to join with the {@code INTERSECT} operator.
 	 */
 	public SqlSelectStatement intersect(SqlSelectBuilder... selects) {
 		return new CompositeSqlSelectStatement(Arrays.asList(selects), "intersect\n");
@@ -445,7 +439,8 @@ public class StandardSql {
 		private boolean startLine = true;
 
 		public SqlStringBuilder append(String sql) {
-			if (startLine) sb.append(Collections.nCopies(indentLevel * 4, " ").stream().collect(Collectors.joining()));
+			if (startLine)
+				sb.append(Collections.nCopies(indentLevel * 4, " ").stream().collect(Collectors.joining()));
 			startLine = false;
 			sb.append(sql);
 			return this;
@@ -504,9 +499,8 @@ public class StandardSql {
 
 	/**
 	 * Represents a PreparedStatement parameter.
-	 * 
 	 * @param <T>
-	 *            The type of the PreparedStatement parameter.
+	 *        The type of the PreparedStatement parameter.
 	 */
 	public class SqlParameter<T> implements SqlFragment {
 		private final T value;
@@ -580,7 +574,7 @@ public class StandardSql {
 
 	/**
 	 * @param <P>
-	 *            the parent type
+	 *        the parent type
 	 */
 	public class ExpressionBuilder<P> implements SqlFragment {
 		private SqlFragment wrapped;
@@ -597,8 +591,9 @@ public class StandardSql {
 			} else {
 				if (!value.getClass().equals(_class))
 					throw new IllegalArgumentException("Object must be of type: " + _class);
-				if (!PreparedStatementEx.jdbcTypes.contains(_class)) throw new IllegalArgumentException(String
-						.format("Invalid JDBC type: %s. Allowed types are: %s", _class, PreparedStatementEx.jdbcTypes));
+				if (!PreparedStatementEx.jdbcTypes.contains(_class))
+					throw new IllegalArgumentException(String.format("Invalid JDBC type: %s. Allowed types are: %s",
+							_class, PreparedStatementEx.jdbcTypes));
 				wrapped = new SqlParameter<>((T) value, _class);
 			}
 			return parent;
@@ -652,7 +647,7 @@ public class StandardSql {
 
 		/**
 		 * @param subquery
-		 *            A subquery that returns a single row.
+		 *        A subquery that returns a single row.
 		 */
 		public P subquery(SqlSelectBuilder subquery) {
 			wrapped = new SqlFragmentWrapper("(", subquery, ")", true);
@@ -1273,7 +1268,8 @@ public class StandardSql {
 				forEach_endAware(fragments, (fragment, first, last) -> {
 					if (newline)
 						w.appendln(fragment);
-					else w.append(fragment);
+					else
+						w.append(fragment);
 					if (!last) w.append(joinString);
 				});
 				if (newline) {
@@ -1294,7 +1290,8 @@ public class StandardSql {
 
 			additionalClauses.get(Placement.BEFORE_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
 			w.append(SqlSelectClause.FROM).append(" ");
-			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM).forEach(i -> w.append(i).append(" "));
+			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM)
+					.forEach(i -> w.append(i).append(" "));
 			w.appendln(fromClause);
 			joinClauses.forEach(w::appendln);
 			additionalClauses.get(Placement.AFTER_EXPRESSION, SqlSelectClause.FROM).forEach(w::appendln);
@@ -1598,9 +1595,11 @@ public class StandardSql {
 			final List<SqlMergeClause> onClauses = setClauses.stream()
 					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(Collectors.toList());
 			final List<SqlMergeClause> updateClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(Collectors.toList());
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
+					.collect(Collectors.toList());
 			final List<SqlMergeClause> insertClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(Collectors.toList());
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
+					.collect(Collectors.toList());
 
 			final CompositeIterator<SqlMergeClause> it = new CompositeIterator<>(
 					Arrays.asList(onClauses.iterator(), updateClauses.iterator(), insertClauses.iterator()));
@@ -1614,9 +1613,11 @@ public class StandardSql {
 			final List<SqlMergeClause> onClauses = setClauses.stream()
 					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(Collectors.toList());
 			final List<SqlMergeClause> updateClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(Collectors.toList());
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
+					.collect(Collectors.toList());
 			final List<SqlMergeClause> insertClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(Collectors.toList());
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
+					.collect(Collectors.toList());
 
 			w.append("merge into ").append(tableName).appendln(" using dual on (");
 			w.increaseIndent();
@@ -1693,7 +1694,6 @@ public class StandardSql {
 	 * converted to SQL.
 	 * <p>
 	 * At the moment, there is no check to actually make sure the SQL is the same. This may change in the future.
-	 *
 	 */
 	public class BatchStatementBuilder extends SqlStatement {
 		private final Collection<SqlStatement> statements;
