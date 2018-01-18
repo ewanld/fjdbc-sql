@@ -1133,7 +1133,7 @@ public class StandardSql {
 	public class SqlSelectBuilder extends SqlSelectStatement {
 		private final Collection<SqlFragment> withClauses = new ArrayList<>();
 		private final Collection<SqlFragment> selectClauses = new ArrayList<>();
-		private String fromClause;
+		private SqlFragment fromClause;
 		private final Collection<String> joinClauses = new ArrayList<>();
 		private final Collection<SqlFragment> whereClauses = new ArrayList<>();
 		private final Collection<SqlFragment> havingClauses = new ArrayList<>();
@@ -1173,7 +1173,7 @@ public class StandardSql {
 
 		public SqlSelectBuilder from(String _fromClause) {
 			if (fromClause != null) throw new IllegalStateException();
-			this.fromClause = _fromClause;
+			this.fromClause = new SqlRaw(_fromClause);
 			return this;
 		}
 
