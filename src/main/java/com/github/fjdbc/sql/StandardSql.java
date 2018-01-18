@@ -534,35 +534,35 @@ public class StandardSql {
 		}
 	}
 
-	public static class ExistsCondition extends SqlFragmentWrapper implements Condition {
+	public static class ExistsCondition extends CompositeSqlFragment implements Condition {
 
 		public ExistsCondition(SqlSelectStatement wrapped) {
-			super("exists (", wrapped, ")", true);
+			super(true, new SqlRaw("exists ("), wrapped, new SqlRaw(")"));
 		}
 	}
 
-	public static class SqlFragmentWrapper implements SqlFragment {
-		private final boolean increaseIndent;
-		private final String before;
+	public static class CompositeSqlFragment implements SqlFragment {
+		private final boolean newline;
+		private final SqlFragment before;
 		private final SqlFragment wrapped;
-		private final String after;
+		private final SqlFragment after;
 
-		public SqlFragmentWrapper(String before, SqlFragment wrapped, String after, boolean increaseIndent) {
+		public CompositeSqlFragment(boolean newline, SqlFragment before, SqlFragment wrapped, SqlFragment after) {
 			this.before = before;
 			this.wrapped = wrapped;
 			this.after = after;
-			this.increaseIndent = increaseIndent;
+			this.newline = newline;
 		}
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
 			w.append(before);
-			if (increaseIndent) {
+			if (newline) {
 				w.appendln();
 				w.increaseIndent();
 			}
 			w.append(wrapped);
-			if (increaseIndent) w.decreaseIndent();
+			if (newline) w.decreaseIndent();
 			w.append(after);
 		}
 
@@ -650,17 +650,17 @@ public class StandardSql {
 		 *        A subquery that returns a single row.
 		 */
 		public P subquery(SqlSelectBuilder subquery) {
-			wrapped = new SqlFragmentWrapper("(", subquery, ")", true);
+			wrapped = new CompositeSqlFragment(true, new SqlRaw("("), subquery, new SqlRaw(")"));
 			return parent;
 		}
 
 		public P all(SqlSelectBuilder subquery) {
-			wrapped = new SqlFragmentWrapper("all (", subquery, ")", true);
+			wrapped = new CompositeSqlFragment(true, new SqlRaw("all ("), subquery, new SqlRaw(")"));
 			return parent;
 		}
 
 		public P any(SqlSelectBuilder subquery) {
-			wrapped = new SqlFragmentWrapper("any (", subquery, ")", true);
+			wrapped = new CompositeSqlFragment(true, new SqlRaw("any ("), subquery, new SqlRaw(")"));
 			return parent;
 		}
 
@@ -1253,6 +1253,14 @@ public class StandardSql {
 			return raw(placement, location, _sql, null);
 		}
 
+		/**
+		 * @param w
+		 * @param clause The type of SELECT clause.
+		 * @param fragments The SQL fragments making the SQL clause.
+		 * @param newline If
+		 *        {@code true, separate fragments with newline and increment indentation of fragments (except when there is only one fragment).
+		 * 		@param joinString The join string between fragments.
+		 */
 		private void writeClause(SqlStringBuilder w, SqlSelectClause clause,
 				Collection<? extends SqlFragment> fragments, boolean newline, String joinString) {
 			additionalClauses.get(Placement.BEFORE_KEYWORD, clause).forEach(w::appendln);
@@ -1712,13 +1720,13 @@ public class StandardSql {
 			this.statements = new ArrayList<>();
 		}
 
-		public BatchStatementBuilder executeEveryNRow(int executeEveryNRow) {
-			this.executeEveryNRow = executeEveryNRow;
+		public BatchStatementBuilder executeEveryNRow(int _executeEveryNRow) {
+			this.executeEveryNRow = _executeEveryNRow;
 			return this;
 		}
 
-		public BatchStatementBuilder commitEveryNRow(int commitEveryNRow) {
-			this.commitEveryNRow = commitEveryNRow;
+		public BatchStatementBuilder commitEveryNRow(int _commitEveryNRow) {
+			this.commitEveryNRow = _commitEveryNRow;
 			return this;
 		}
 
