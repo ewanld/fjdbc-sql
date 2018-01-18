@@ -6,8 +6,7 @@ import java.util.List;
 
 public class SqlUtils {
 	/**
-	 * Partition a list into sublists of length L. The last list may have a size
-	 * smaller than L.<br>
+	 * Partition a list into sublists of length L. The last list may have a size smaller than L.<br>
 	 * The sublists are backed by the original list.
 	 */
 	public static <T> List<List<T>> partition(Collection<T> collection, final int partitionSize) {
@@ -17,8 +16,7 @@ public class SqlUtils {
 	}
 
 	/**
-	 * Partition a list into sublists of length L. The last list may have a size
-	 * smaller than L.<br>
+	 * Partition a list into sublists of length L. The last list may have a size smaller than L.<br>
 	 * The sublists are backed by the original list.
 	 */
 	private static <T> List<List<T>> partitionList(List<T> list, final int partitionSize) {

@@ -521,7 +521,7 @@ public class StandardSql {
 		@Override
 		public void appendTo(SqlStringBuilder w) {
 			w.append(sql);
-			if (debug) {
+			if (isDebug()) {
 				w.append("  /* ");
 				w.append(value == null ? "null" : SqlUtils.escapeComment(value.toString()));
 				w.append(" */");
@@ -1304,8 +1304,16 @@ public class StandardSql {
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final CompositeIterator<SqlFragment> fragmentsIterator = new CompositeIterator<>(
-					Arrays.asList(selectClauses.iterator(), whereClauses.iterator(), havingClauses.iterator()));
+			// @formatter:off
+			final CompositeIterator<SqlFragment> fragmentsIterator = new CompositeIterator<>(Arrays.asList(
+				withClauses.iterator(),
+				selectClauses.iterator(),
+				whereClauses.iterator(),
+				groupByClauses.iterator(),
+				havingClauses.iterator(),
+				orderByClauses.iterator()
+			));
+			// @formatter:on
 			while (fragmentsIterator.hasNext()) {
 				fragmentsIterator.next().bind(ps, index);
 			}
@@ -1651,7 +1659,7 @@ public class StandardSql {
 		void accept(T value, boolean first, boolean last);
 	}
 
-	private static <T> void forEach_endAware(Collection<? extends T> collection, EndAwareConsumer<T> consumer) {
+	static <T> void forEach_endAware(Collection<? extends T> collection, EndAwareConsumer<T> consumer) {
 		final int count = collection.size();
 		int i = 0;
 		for (final T t : collection) {
