@@ -3,7 +3,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.github.fjdbc</groupId>
+	<groupId>com.github.ewanld</groupId>
 	<artifactId>fjdbc-sql</artifactId>
 	<version>0.1.0</version>
 
@@ -60,9 +60,9 @@
 	</build>
 	<dependencies>
 		<dependency>
-			<groupId>com.github.fjdbc</groupId>
+			<groupId>com.github.ewanld</groupId>
 			<artifactId>fjdbc</artifactId>
-			<version>0.1.0</version>
+			<version>0.2.0</version>
 		</dependency>
 
 		<dependency>
