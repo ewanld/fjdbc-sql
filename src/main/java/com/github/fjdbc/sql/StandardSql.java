@@ -537,38 +537,29 @@ public class StandardSql {
 	public static class ExistsCondition extends CompositeSqlFragment implements Condition {
 
 		public ExistsCondition(SqlSelectStatement wrapped) {
-			super(true, new SqlRaw("exists ("), wrapped, new SqlRaw(")"));
+			super(new SqlRaw("exists ("), SqlFragment.newlineIndent, wrapped, SqlFragment.dedent, new SqlRaw(")"));
 		}
 	}
 
 	public static class CompositeSqlFragment implements SqlFragment {
-		private final boolean newline;
-		private final SqlFragment before;
-		private final SqlFragment wrapped;
-		private final SqlFragment after;
+		private final Collection<SqlFragment> fragments;
 
-		public CompositeSqlFragment(boolean newline, SqlFragment before, SqlFragment wrapped, SqlFragment after) {
-			this.before = before;
-			this.wrapped = wrapped;
-			this.after = after;
-			this.newline = newline;
+		public CompositeSqlFragment(SqlFragment... fragments) {
+			this.fragments = Arrays.asList(fragments);
 		}
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
-			w.append(before);
-			if (newline) {
-				w.appendln();
-				w.increaseIndent();
+			for (final SqlFragment fragment : fragments) {
+				w.append(fragment);
 			}
-			w.append(wrapped);
-			if (newline) w.decreaseIndent();
-			w.append(after);
 		}
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			wrapped.bind(ps, index);
+			for (final SqlFragment fragment : fragments) {
+				fragment.bind(ps, index);
+			}
 		}
 	}
 
@@ -650,17 +641,19 @@ public class StandardSql {
 		 *        A subquery that returns a single row.
 		 */
 		public P subquery(SqlSelectBuilder subquery) {
-			wrapped = new CompositeSqlFragment(true, new SqlRaw("("), subquery, new SqlRaw(")"));
+			wrapped = subquery.wrapInParentheses(true);
 			return parent;
 		}
 
 		public P all(SqlSelectBuilder subquery) {
-			wrapped = new CompositeSqlFragment(true, new SqlRaw("all ("), subquery, new SqlRaw(")"));
+			wrapped = new CompositeSqlFragment(new SqlRaw("all ("), SqlFragment.newlineIndent, subquery,
+					SqlFragment.dedent, new SqlRaw(")"));
 			return parent;
 		}
 
 		public P any(SqlSelectBuilder subquery) {
-			wrapped = new CompositeSqlFragment(true, new SqlRaw("any ("), subquery, new SqlRaw(")"));
+			wrapped = new CompositeSqlFragment(new SqlRaw("any ("), SqlFragment.newlineIndent, subquery,
+					SqlFragment.dedent, new SqlRaw(")"));
 			return parent;
 		}
 
@@ -728,6 +721,27 @@ public class StandardSql {
 			return builder.getSql();
 		}
 
+		public static final SqlFragment indent = w -> {
+			w.increaseIndent();
+		};
+		public static final SqlFragment newlineIndent = w -> {
+			w.appendln();
+			w.increaseIndent();
+		};
+
+		public static final SqlFragment dedent = w -> {
+			w.decreaseIndent();
+		};
+		public static final SqlFragment newlineDedent = w -> {
+			w.appendln();
+			w.decreaseIndent();
+		};
+
+		public default SqlFragment wrapInParentheses(boolean newlineAndIndent) {
+			return newlineAndIndent ? new CompositeSqlFragment(new SqlRaw("("), SqlFragment.newlineIndent, this,
+					SqlFragment.dedent, new SqlRaw(")"))
+					: new CompositeSqlFragment(new SqlRaw("("), this, new SqlRaw(")"));
+		}
 	}
 
 	public static class InSubqueryConditionBuilder implements Condition {
@@ -1276,8 +1290,7 @@ public class StandardSql {
 				forEach_endAware(fragments, (fragment, first, last) -> {
 					if (newline)
 						w.appendln(fragment);
-					else
-						w.append(fragment);
+					else w.append(fragment);
 					if (!last) w.append(joinString);
 				});
 				if (newline) {
