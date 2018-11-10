@@ -23,7 +23,7 @@ public class ConstantsGenerator extends AbstractWriter {
 		final ResultSet resultSet = metaData.getTables(null, null, null, null);
 		final SingleRowExtractor<String> extractor = rs -> rs.getString("table_name");
 		final Set<String> tables = new TreeSet<>();
-		extractor.extractAll(resultSet, tables::add);
+		extractor.iterator(resultSet).forEachRemaining(tables::add);
 		resultSet.close();
 		return tables;
 	}
@@ -33,7 +33,7 @@ public class ConstantsGenerator extends AbstractWriter {
 		final ResultSet resultSet = metaData.getColumns(null, null, "%", null);
 		final SingleRowExtractor<String> extractor = rs -> rs.getString("column_name");
 		final Set<String> tables = new TreeSet<>();
-		extractor.extractAll(resultSet, tables::add);
+		extractor.iterator(resultSet).forEachRemaining(tables::add);
 		resultSet.close();
 		return tables;
 	}
@@ -41,12 +41,12 @@ public class ConstantsGenerator extends AbstractWriter {
 	public void generate(String packageName) throws Exception {
 		final Set<String> tables = listTables();
 		final Set<String> columns = listColumns();
-				
+
 		writeln("package %s;", packageName);
 		writeln();
 		writeln("public class DbConstants {");
 		writeln("	public static class Tables {");
-		for(final String t : tables) {
+		for (final String t : tables) {
 			writeln("		public static final String %s = \"%s\";", t.toUpperCase(), t);
 		}
 		writeln("	}");
