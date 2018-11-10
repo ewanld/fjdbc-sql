@@ -16,6 +16,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -45,7 +47,7 @@ import com.github.fjdbc.query.ResultSetExtractor;
  * <a href="https://ronsavage.github.io/SQL/sql-2003-2.bnf.html">SQL-2003 specification</a>.
  * <p>
  * The following syntactic elements are supported:
- * <table border="1">
+ * <table border="1" summary="">
  * <tr>
  * <td>Element</td>
  * <td>Clause</td>
@@ -240,6 +242,11 @@ public class StandardSql {
 		return new SqlRaw(sql, binder);
 	}
 
+	public SqlRaw raw(String sql, Object value1) {
+		final PreparedStatementBinder binder = PreparedStatementBinder.create(value1);
+		return new SqlRaw(sql, binder);
+	}
+
 	/**
 	 * Build an {@code AND} condition.
 	 * @param conditions
@@ -267,7 +274,7 @@ public class StandardSql {
 	}
 
 	/**
-	 * Build a {@code SELECT} statement that is the {@code UNION} of all specified {@SELECT} statements.
+	 * Build a {@code SELECT} statement that is the {@code UNION} of all specified {@code SELECT} statements.
 	 * @param selects
 	 *        The {@code SELECT} statements to join.
 	 */
@@ -276,7 +283,7 @@ public class StandardSql {
 	}
 
 	/**
-	 * Build a {@code SELECT} statement that is the {@code UNION ALL} of all specified {@SELECT} statements.
+	 * Build a {@code SELECT} statement that is the {@code UNION ALL} of all specified {@code SELECT} statements.
 	 * @param selects
 	 *        The {@code SELECT} statements to join.
 	 */
@@ -641,7 +648,7 @@ public class StandardSql {
 		 *        A subquery that returns a single row.
 		 */
 		public P subquery(SqlSelectBuilder subquery) {
-			wrapped = subquery.wrapInParentheses(true);
+			wrapped = SqlFragment.wrapInParentheses(subquery, true);
 			return parent;
 		}
 
@@ -737,10 +744,11 @@ public class StandardSql {
 			w.decreaseIndent();
 		};
 
-		public default SqlFragment wrapInParentheses(boolean newlineAndIndent) {
-			return newlineAndIndent ? new CompositeSqlFragment(new SqlRaw("("), SqlFragment.newlineIndent, this,
-					SqlFragment.dedent, new SqlRaw(")"))
-					: new CompositeSqlFragment(new SqlRaw("("), this, new SqlRaw(")"));
+		public static SqlFragment wrapInParentheses(SqlFragment fragment, boolean newlineAndIndent) {
+			return newlineAndIndent
+					? new CompositeSqlFragment(new SqlRaw("("), SqlFragment.newlineIndent, fragment,
+							SqlFragment.dedent, new SqlRaw(")"))
+					: new CompositeSqlFragment(new SqlRaw("("), fragment, new SqlRaw(")"));
 		}
 	}
 
@@ -1089,7 +1097,9 @@ public class StandardSql {
 		WHERE("where"),
 		GROUP_BY("group by"),
 		HAVING("having"),
-		ORDER_BY("order by");
+		ORDER_BY("order by"),
+		OFFSET("offset"),
+		FETCH_FIRST("fetch first");
 
 		private final String sql;
 
@@ -1153,6 +1163,8 @@ public class StandardSql {
 		private final Collection<SqlFragment> havingClauses = new ArrayList<>();
 		private final Collection<SqlFragment> groupByClauses = new ArrayList<>();
 		private final Collection<SqlFragment> orderByClauses = new ArrayList<>();
+		private SqlFragment offsetClause;
+		private SqlFragment fetchFirstClause;
 		private final SqlRawMap additionalClauses = new SqlRawMap();
 
 		public SqlSelectBuilder distinct() {
@@ -1188,6 +1200,12 @@ public class StandardSql {
 		public SqlSelectBuilder from(String _fromClause) {
 			if (fromClause != null) throw new IllegalStateException();
 			this.fromClause = new SqlRaw(_fromClause);
+			return this;
+		}
+
+		public SqlSelectBuilder from(SqlSelectBuilder _fromClause) {
+			if (fromClause != null) throw new IllegalStateException("from clause has already been set");
+			this.fromClause = SqlFragment.wrapInParentheses(_fromClause, true);
 			return this;
 		}
 
@@ -1256,6 +1274,22 @@ public class StandardSql {
 			return this;
 		}
 
+		/**
+		 * Row offset. {@code 0} means no offset.<br>
+		 * Introduced in the SQL:2008 standard.
+		 */
+		public SqlSelectBuilder offset(int offset) {
+			if (offsetClause != null) throw new IllegalStateException("offset clause has already been set");
+			offsetClause = new SqlRaw("? rows", (ps, index) -> ps.setInt(index.next(), offset));
+			return this;
+		}
+
+		public SqlSelectBuilder fetchFirst(int rowCount) {
+			if (fetchFirstClause != null) throw new IllegalStateException("fetch first clause has already been set");
+			fetchFirstClause = new SqlRaw("? rows only", (ps, index) -> ps.setInt(index.next(), rowCount));
+			return this;
+		}
+
 		public SqlSelectBuilder raw(Placement placement, SqlSelectClause location, String _sql,
 				PreparedStatementBinder binder) {
 			final SqlRaw clause = new SqlRaw(_sql, binder);
@@ -1309,6 +1343,7 @@ public class StandardSql {
 			writeClause(w, SqlSelectClause.WITH, withClauses, true, ",");
 			writeClause(w, SqlSelectClause.SELECT, selectClauses, false, ", ");
 
+			// begin - special case for "from" clause
 			additionalClauses.get(Placement.BEFORE_KEYWORD, SqlSelectClause.FROM).forEach(w::appendln);
 			w.append(SqlSelectClause.FROM).append(" ");
 			additionalClauses.get(Placement.AFTER_KEYWORD, SqlSelectClause.FROM)
@@ -1316,11 +1351,26 @@ public class StandardSql {
 			w.appendln(fromClause);
 			joinClauses.forEach(w::appendln);
 			additionalClauses.get(Placement.AFTER_EXPRESSION, SqlSelectClause.FROM).forEach(w::appendln);
+			// end - special case for "from" clause
 
 			writeClause(w, SqlSelectClause.WHERE, whereClauses, true, "and ");
 			writeClause(w, SqlSelectClause.GROUP_BY, groupByClauses, false, ", ");
 			writeClause(w, SqlSelectClause.HAVING, havingClauses, true, "and ");
 			writeClause(w, SqlSelectClause.ORDER_BY, orderByClauses, false, ", ");
+			writeClause(w, SqlSelectClause.OFFSET, getOffsetClauses(), false, "");
+			writeClause(w, SqlSelectClause.FETCH_FIRST, getFetchFirstClauses(), false, "");
+		}
+
+		public Collection<SqlFragment> getOffsetClauses() {
+			return offsetClause == null ? Collections.emptyList() : Collections.singleton(offsetClause);
+		}
+
+		public Collection<SqlFragment> getFetchFirstClauses() {
+			return fetchFirstClause == null ? Collections.emptyList() : Collections.singleton(fetchFirstClause);
+		}
+
+		public Collection<SqlFragment> getFromClauses() {
+			return Collections.singleton(fromClause);
 		}
 
 		@Override
@@ -1329,10 +1379,13 @@ public class StandardSql {
 			final CompositeIterator<SqlFragment> fragmentsIterator = new CompositeIterator<>(Arrays.asList(
 				withClauses.iterator(),
 				selectClauses.iterator(),
+				getFromClauses().iterator(),
 				whereClauses.iterator(),
 				groupByClauses.iterator(),
 				havingClauses.iterator(),
-				orderByClauses.iterator()
+				orderByClauses.iterator(),
+				getOffsetClauses().iterator(),
+				getFetchFirstClauses().iterator()
 			));
 			// @formatter:on
 			while (fragmentsIterator.hasNext()) {
@@ -1778,6 +1831,7 @@ public class StandardSql {
 		private BiConsumer<SQLException, T> errorHandler = (e, statement) -> {
 			throw new RuntimeSQLException(e);
 		};
+		private AtomicBoolean cancelRequested = new AtomicBoolean();
 
 		public StreamBackedBatchStatement(String sql, Stream<T> statements, final long executeEveryNRow,
 				final long commitEveryNRow) {
@@ -1797,26 +1851,53 @@ public class StandardSql {
 			w.append(sql);
 		}
 
+		/**
+		 * {@code cancelRequested} is an {@code AtomicBoolean} instance that allows to cancel the execution from a
+		 * different thread.<br>
+		 * If not set, an instance is provided by default.
+		 */
+		public void setCancelRequestAtomicBoolean(AtomicBoolean cancelRequested) {
+			this.cancelRequested = cancelRequested;
+		}
+
+		/**
+		 * Request the cancellation of this statement.
+		 * This method is thread-safe.
+		 */
+		public void cancel() {
+			cancelRequested.set(true);
+		}
+
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
 			final IntSequence count = new IntSequence(0);
-			statements.forEachOrdered(s -> {
-				try {
-					s.bind(ps, index);
-					ps.addBatch();
-					count.next();
-					if (executeEveryNRow > 0 && (count.get() % executeEveryNRow) == 0) {
-						ps.executeBatch();
+			try {
+				statements.forEachOrdered(s -> {
+					try {
+						s.bind(ps, index);
+						ps.addBatch();
+						count.next();
+						if (cancelRequested.get()) {
+							cnxProvider.rollback(ps.getConnection());
+							throw new CancellationException();
+						}
+						if (executeEveryNRow > 0 && (count.get() % executeEveryNRow) == 0) {
+							ps.executeBatch();
+						}
+						if (commitEveryNRow > 0 && (count.get() % commitEveryNRow) == 0) {
+							cnxProvider.commit(ps.getConnection());
+						}
+					} catch (final SQLException e) {
+						errorHandler.accept(e, s);
+					} finally {
+						index.reset();
 					}
-					if (commitEveryNRow > 0 && (count.get() % commitEveryNRow) == 0) {
-						cnxProvider.commit();
-					}
-				} catch (final SQLException e) {
-					errorHandler.accept(e, s);
-				} finally {
-					index.reset();
+				});
+			} catch (final Exception e) {
+				if (!(e instanceof CancellationException)) {
+					throw e;
 				}
-			});
+			}
 		}
 	}
 
