@@ -164,7 +164,7 @@ public class StandardSql {
 	 */
 	public SqlSelectBuilder select(String... _selects) {
 		final SqlSelectBuilder res = new SqlSelectBuilder();
-		res.select(Arrays.asList(_selects));
+		res.select(_selects);
 		return res;
 	}
 
@@ -173,7 +173,7 @@ public class StandardSql {
 	 */
 	public SqlSelectBuilder selectDistinct(String... _selects) {
 		final SqlSelectBuilder res = new SqlSelectBuilder().distinct();
-		res.select(Arrays.asList(_selects));
+		res.select(_selects);
 		return res;
 	}
 
@@ -1199,8 +1199,16 @@ public class StandardSql {
 			return res;
 		}
 
-		public SqlSelectBuilder selectValue(String value) {
-			selectClauses.add(new SqlRaw(SqlUtils.toLiteralString(value)));
+		/**
+		 * Add a SELECT clause having the following form:
+		 * <p>
+		 * {@code SELECT 'literal' as columnAlias}
+		 */
+		public SqlSelectBuilder selectLiteral(String literal, String columnAlias) {
+			final StringBuilder clause_str = new StringBuilder(SqlUtils.toLiteralString(literal));
+			if (columnAlias != null) clause_str.append(" AS " + columnAlias);
+			selectClauses.add(new SqlRaw(clause_str.toString()));
+
 			return this;
 		}
 
@@ -1508,8 +1516,8 @@ public class StandardSql {
 			w.append(")");
 			w.appendln();
 			w.append("values (");
-			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql)
-					.collect(Collectors.joining(", ")));
+			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql).collect(
+					Collectors.joining(", ")));
 			w.append(")");
 		}
 
@@ -1696,7 +1704,8 @@ public class StandardSql {
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
 			final List<SqlMergeClause> onClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(Collectors.toList());
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE))
+					.collect(Collectors.toList());
 			final List<SqlMergeClause> updateClauses = setClauses.stream()
 					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
 					.collect(Collectors.toList());
@@ -1714,7 +1723,8 @@ public class StandardSql {
 		@Override
 		public void appendTo(SqlStringBuilder w) {
 			final List<SqlMergeClause> onClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE)).collect(Collectors.toList());
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE))
+					.collect(Collectors.toList());
 			final List<SqlMergeClause> updateClauses = setClauses.stream()
 					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
 					.collect(Collectors.toList());
@@ -1742,8 +1752,8 @@ public class StandardSql {
 			w.append("when not matched then insert (");
 			w.append(insertClauses.stream().map(SqlMergeClause::getColumnName).collect(Collectors.joining(", ")));
 			w.append(") values (");
-			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql)
-					.collect(Collectors.joining(", ")));
+			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql).collect(
+					Collectors.joining(", ")));
 			w.append(")");
 		}
 
