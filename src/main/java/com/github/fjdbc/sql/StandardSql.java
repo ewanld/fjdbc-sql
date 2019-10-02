@@ -739,10 +739,13 @@ public class StandardSql {
 		public static final SqlFragment dedent = w -> {
 			w.decreaseIndent();
 		};
+
 		public static final SqlFragment newlineDedent = w -> {
 			w.appendln();
 			w.decreaseIndent();
 		};
+
+		public static final SqlFragment nullLiteral = w -> w.append("NULL");
 
 		public static SqlFragment wrapInParentheses(SqlFragment fragment, boolean newlineAndIndent) {
 			return newlineAndIndent
@@ -901,11 +904,29 @@ public class StandardSql {
 		}
 
 		// @formatter:off
+		/**
+		 * Build an '=' expression. 
+		 */
 		public ExpressionBuilder<P> eq() { return is(RelationalOperator.EQ); }
+		/**
+		 * Build a '<>' expression. 
+		 */
 		public ExpressionBuilder<P> notEq() { return is(RelationalOperator.NOT_EQ); }
+		/**
+		 * Build a '>' expression. 
+		 */
 		public ExpressionBuilder<P> gt() { return is(RelationalOperator.GT); }
+		/**
+		 * Build a '<' expression. 
+		 */
 		public ExpressionBuilder<P> lt() { return is(RelationalOperator.LT); }
+		/**
+		 * Build a '>=' expression. 
+		 */
 		public ExpressionBuilder<P> gte() { return is(RelationalOperator.GTE); }
+		/**
+		 * Build a '<=' expression. 
+		 */
 		public ExpressionBuilder<P> lte() { return is(RelationalOperator.LTE); }
 		// @formatter:on
 
