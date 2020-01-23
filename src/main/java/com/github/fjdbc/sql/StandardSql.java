@@ -131,13 +131,14 @@ public class StandardSql {
 	 */
 	private final boolean debug;
 	private final ConnectionProvider cnxProvider;
+	private final SqlDialect dialect;
 
 	/**
 	 * @param cnxProvider
 	 *        The database connection provider.
 	 */
 	public StandardSql(ConnectionProvider cnxProvider) {
-		this(cnxProvider, false);
+		this(cnxProvider, SqlDialect.STANDARD, false);
 	}
 
 	/**
@@ -146,8 +147,9 @@ public class StandardSql {
 	 * @param debug
 	 *        Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
-	public StandardSql(ConnectionProvider cnxProvider, boolean debug) {
+	public StandardSql(ConnectionProvider cnxProvider, SqlDialect dialect, boolean debug) {
 		this.cnxProvider = cnxProvider;
+		this.dialect = dialect;
 		this.debug = debug;
 	}
 
@@ -370,7 +372,7 @@ public class StandardSql {
 		}
 	}
 
-	public static class InConditionBuilder implements Condition {
+	public class InConditionBuilder implements Condition {
 		private final String sql;
 		private final PreparedStatementBinder binder;
 
@@ -585,7 +587,7 @@ public class StandardSql {
 		@SuppressWarnings("unchecked")
 		public <T> P value(Object value, Class<T> _class) {
 			if (value == null) {
-				wrapped = new SqlParameter<>((T) value, null);
+				wrapped = new SqlParameter<>((T) value, _class);
 			} else {
 				if (!value.getClass().equals(_class))
 					throw new IllegalArgumentException("Object must be of type: " + _class);
@@ -675,10 +677,15 @@ public class StandardSql {
 		}
 	}
 
-	static <T> void setAnyObject(PreparedStatement ps, int columnIndex, T o, Class<T> type) throws SQLException {
+	<T> void setAnyObject(PreparedStatement ps, int columnIndex, T o, Class<T> type) throws SQLException {
 		if (o == null) {
 			// java.sql.Types.OTHER does not work with Oracle driver.
-			ps.setNull(columnIndex, java.sql.Types.INTEGER);
+			if (dialect == SqlDialect.ORACLE) {
+				ps.setNull(columnIndex, java.sql.Types.INTEGER);
+			} else {
+				ps.setNull(columnIndex, java.sql.Types.OTHER);
+			}
+
 		} else if (type.equals(String.class)) {
 			ps.setString(columnIndex, (String) o);
 		} else if (type.equals(BigDecimal.class)) {
@@ -1351,8 +1358,7 @@ public class StandardSql {
 					w.append(" ");
 				}
 				forEach_endAware(fragments, (fragment, first, last) -> {
-					if (newline)
-						w.appendln(fragment);
+					if (newline) w.appendln(fragment);
 					else w.append(fragment);
 					if (!last) w.append(joinString);
 				});
@@ -1558,7 +1564,7 @@ public class StandardSql {
 
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			body.bind(ps, index);
+			if (body != null) body.bind(ps, index);
 		}
 
 		@Override
@@ -1569,7 +1575,13 @@ public class StandardSql {
 				w.append(columns.stream().collect(Collectors.joining(", ")));
 				w.appendln(")");
 			}
-			w.append(body);
+			if (body != null) {
+				w.append(body);
+			} else {
+				// FIXME not accepted by all dialects
+				w.appendln();
+				w.append("default values");
+			}
 		}
 
 	}
@@ -1937,5 +1949,9 @@ public class StandardSql {
 	 */
 	public boolean isDebug() {
 		return debug;
+	}
+
+	public ConnectionProvider getConnectionProvider() {
+		return cnxProvider;
 	}
 }
