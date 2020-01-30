@@ -13,21 +13,21 @@ import java.util.stream.Stream;
 
 import com.github.fjdbc.connection.SingleConnectionProvider;
 import com.github.fjdbc.query.SingleRowExtractor;
-import com.github.fjdbc.sql.StandardSql.SqlInsertBuilder;
-import com.github.fjdbc.sql.StandardSql.SqlSelectBuilder;
+import com.github.fjdbc.sql.SqlBuilder.SqlInsertBuilder;
+import com.github.fjdbc.sql.SqlBuilder.SqlSelectBuilder;
 
 /**
  * The examples used in README.MD
  */
 public class ReadmeExamples {
-	private static final StandardSql sql = new StandardSql(null);
+	private static final SqlBuilder sql = new SqlBuilder(null);
 
 	public static void main(String[] args) throws Exception {
 		// -------------------------------------------------------------------------------------------------------------
 		// Setup
 		final Connection cnx = DriverManager.getConnection("/jdbc/url");
 		final SingleConnectionProvider provider = new SingleConnectionProvider(cnx);
-		final StandardSql sql = new StandardSql(provider);
+		final SqlBuilder sql = new SqlBuilder(provider);
 
 		// @formatter:off
 		// Select data from the database

@@ -11,10 +11,10 @@ import java.util.GregorianCalendar;
 
 import org.apache.commons.io.FileUtils;
 
-import com.github.fjdbc.sql.StandardSql;
-import com.github.fjdbc.sql.StandardSql.Placement;
-import com.github.fjdbc.sql.StandardSql.SqlFragment;
-import com.github.fjdbc.sql.StandardSql.SqlSelectClause;
+import com.github.fjdbc.sql.SqlBuilder;
+import com.github.fjdbc.sql.SqlBuilder.Placement;
+import com.github.fjdbc.sql.SqlBuilder.SqlFragment;
+import com.github.fjdbc.sql.SqlBuilder.SqlSelectClause;
 
 /**
  * This class conforms to the POJO convention of maven surefire.
@@ -22,19 +22,19 @@ import com.github.fjdbc.sql.StandardSql.SqlSelectClause;
  * It writes SQL statements in the file StandardSqlTest-last.txt, then compares the content with a reference file
  * (StandardSqlTest-ref.txt).
  */
-public class StandardSqlTest {
+public class SqlBuilderTest {
 	private static final File last = new File(
-			StandardSqlTest.class.getClassLoader().getResource("StandardSqlTest-last.txt").getFile());
+			SqlBuilderTest.class.getClassLoader().getResource("StandardSqlTest-last.txt").getFile());
 	private static final File ref = new File(
-			StandardSqlTest.class.getClassLoader().getResource("StandardSqlTest-ref.txt").getFile());
+			SqlBuilderTest.class.getClassLoader().getResource("StandardSqlTest-ref.txt").getFile());
 	private final BufferedWriter writer;
 
-	public StandardSqlTest() throws IOException {
+	public SqlBuilderTest() throws IOException {
 		writer = new BufferedWriter(new FileWriter(last));
 	}
 
 	public void writeSql() throws IOException {
-		final StandardSql sql = new StandardSql(null, SqlDialect.STANDARD, true);
+		final SqlBuilder sql = new SqlBuilder(null, SqlDialect.STANDARD, true);
 		// @formatter:off
 		writeSql(sql
 			.select("a", "b")

@@ -126,7 +126,7 @@ import com.github.fjdbc.query.ResultSetExtractor;
  * </tr>
  * </table>
  */
-public class StandardSql {
+public class SqlBuilder {
 	/**
 	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
@@ -138,7 +138,7 @@ public class StandardSql {
 	 * @param cnxProvider
 	 *        The database connection provider.
 	 */
-	public StandardSql(ConnectionProvider cnxProvider) {
+	public SqlBuilder(ConnectionProvider cnxProvider) {
 		this(cnxProvider, SqlDialect.STANDARD, false);
 	}
 
@@ -148,7 +148,7 @@ public class StandardSql {
 	 * @param debug
 	 *        Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
-	public StandardSql(ConnectionProvider cnxProvider, SqlDialect dialect, boolean debug) {
+	public SqlBuilder(ConnectionProvider cnxProvider, SqlDialect dialect, boolean debug) {
 		this.cnxProvider = cnxProvider;
 		this.dialect = dialect;
 		this.debug = debug;
