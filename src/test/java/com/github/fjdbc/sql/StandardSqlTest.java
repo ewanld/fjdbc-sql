@@ -34,7 +34,7 @@ public class StandardSqlTest {
 	}
 
 	public void writeSql() throws IOException {
-		final StandardSql sql = new StandardSql(null, true);
+		final StandardSql sql = new StandardSql(null, SqlDialect.STANDARD, true);
 		// @formatter:off
 		writeSql(sql
 			.select("a", "b")

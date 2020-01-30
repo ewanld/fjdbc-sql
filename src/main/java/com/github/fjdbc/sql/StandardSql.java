@@ -24,9 +24,10 @@ import java.util.stream.Stream;
 
 import com.github.fjdbc.ConnectionProvider;
 import com.github.fjdbc.IntSequence;
-import com.github.fjdbc.RuntimeSQLException;
 import com.github.fjdbc.PreparedStatementBinder;
+import com.github.fjdbc.RuntimeSQLException;
 import com.github.fjdbc.internal.PreparedStatementEx;
+import com.github.fjdbc.internal.StatementOperationImpl;
 import com.github.fjdbc.op.StatementOperation;
 import com.github.fjdbc.query.Query;
 import com.github.fjdbc.query.ResultSetExtractor;
@@ -1024,7 +1025,7 @@ public class StandardSql {
 
 	public abstract class SqlStatement implements SqlFragment {
 		public final StatementOperation toStatement() {
-			return new StatementOperation(cnxProvider, getSql(), this);
+			return new StatementOperationImpl(cnxProvider, getSql(), this);
 		}
 	}
 
@@ -1941,6 +1942,7 @@ public class StandardSql {
 					throw e;
 				}
 			}
+
 		}
 	}
 
