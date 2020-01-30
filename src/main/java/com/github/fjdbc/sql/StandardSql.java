@@ -441,6 +441,12 @@ public class StandardSql {
 		public void bind(PreparedStatement st, IntSequence index) throws SQLException {
 			if (binder != null) binder.bind(st, index);
 		}
+
+		@Override
+		public String getSql() {
+			// as a small optimization, we provide the SQL directly since it is a constant value.
+			return sql;
+		}
 	}
 
 	public static class SqlStringBuilder {
