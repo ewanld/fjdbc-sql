@@ -223,6 +223,17 @@ public class SqlBuilder {
 	}
 
 	/**
+	 * Build an SQL condition that is either always true, or always false.
+	 * <p>
+	 * It is implemented by outputting either '1 = 1' or '1 = 0'.
+	 */
+	public Condition bool(boolean value) {
+		final int value_int = value ? 1 : 0;
+		return new SimpleConditionBuilder(new SqlParameter<>(1, Integer.class), RelationalOperator.EQ,
+				new SqlParameter<>(value_int, Integer.class));
+	}
+
+	/**
 	 * Convert an arbitrary string to an SQL fragment.
 	 * <p>
 	 * The SQL fragment may then be used in any of the {@code raw} methods, or as an SQL {@code Condition}.
@@ -439,6 +450,11 @@ public class SqlBuilder {
 		}
 
 		@Override
+		public boolean representsNullValue() {
+			return sql.trim().equalsIgnoreCase("NULL");
+		}
+		
+		@Override
 		public String getSql() {
 			// as a small optimization, we provide the SQL directly since it is a constant value.
 			return sql;
@@ -543,6 +559,11 @@ public class SqlBuilder {
 		@Override
 		public void bind(PreparedStatement st, IntSequence index) throws SQLException {
 			setAnyObject(st, index.next(), value, type);
+		}
+
+		@Override
+		public boolean representsNullValue() {
+			return value == null;
 		}
 	}
 
@@ -678,6 +699,11 @@ public class SqlBuilder {
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
 			wrapped.bind(ps, index);
 		}
+
+		@Override
+		public boolean representsNullValue() {
+			return wrapped.representsNullValue();
+		}
 	}
 
 	<T> void setAnyObject(PreparedStatement ps, int columnIndex, T o, Class<T> type) throws SQLException {
@@ -763,6 +789,13 @@ public class SqlBuilder {
 							SqlFragment.dedent, new SqlRaw(")"))
 					: new CompositeSqlFragment(new SqlRaw("("), fragment, new SqlRaw(")"));
 		}
+
+		/**
+		 * Returns true if this fragments represents the SQL {@code NULL} value.
+		 */
+		default boolean representsNullValue() {
+			return false;
+		}
 	}
 
 	public static class InSubqueryConditionBuilder implements Condition {
@@ -792,18 +825,26 @@ public class SqlBuilder {
 	}
 
 	public static class SimpleConditionBuilder implements Condition {
-		private final SqlFragment rhs;
-		private final RelationalOperator operator;
+		private SqlFragment rhs;
+		private RelationalOperator operator;
 		private final SqlFragment lhs;
+		private boolean fixNullRhs;
 
 		public SimpleConditionBuilder(SqlFragment lhs, RelationalOperator operator, SqlFragment rhs) {
+			this(lhs, operator, rhs, false);
+		}
+
+		public SimpleConditionBuilder(SqlFragment lhs, RelationalOperator operator, SqlFragment rhs,
+				boolean fixNullRhs) {
 			this.lhs = lhs;
 			this.rhs = rhs;
 			this.operator = operator;
+			this.fixNullRhs = fixNullRhs;
 		}
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
+			fixNullRhs();
 			lhs.appendTo(w);
 			w.append(" ");
 			operator.appendTo(w);
@@ -811,8 +852,25 @@ public class SqlBuilder {
 			rhs.appendTo(w);
 		}
 
+		/**
+		 * Handles the special case of NULL values on the RHS: is this case '=' is replaced with 'IS'.
+		 */
+		private void fixNullRhs() {
+			if (!fixNullRhs) return;
+			final boolean rhsNull = rhs.representsNullValue();
+			if (fixNullRhs && rhsNull && operator == RelationalOperator.EQ) {
+				operator = RelationalOperator.IS;
+				rhs = SqlFragment.nullLiteral;
+			} else if (fixNullRhs && rhsNull && operator == RelationalOperator.NOT_EQ) {
+				operator = RelationalOperator.IS_NOT;
+				rhs = SqlFragment.nullLiteral;
+			}
+			fixNullRhs = false;
+		}
+
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
+			fixNullRhs();
 			lhs.bind(ps, index);
 			rhs.bind(ps, index);
 		}
@@ -913,6 +971,12 @@ public class SqlBuilder {
 			return rhs;
 		}
 
+		private ExpressionBuilder<P> isNullable(RelationalOperator _operator) {
+			final ExpressionBuilder<P> rhs = new ExpressionBuilder<>(parent);
+			currentCondition = new SimpleConditionBuilder(lhs, _operator, rhs, true);
+			return rhs;
+		}
+
 		// @formatter:off
 		/**
 		 * Build an '=' expression. 
@@ -922,6 +986,14 @@ public class SqlBuilder {
 		 * Build a '<>' expression. 
 		 */
 		public ExpressionBuilder<P> notEq() { return is(RelationalOperator.NOT_EQ); }
+		/**
+		 * Build an '=' expression. If the right-hand side represents the {@code NULL} value, then the operator is automatically converted to {@code IS}. 
+		 */
+		public ExpressionBuilder<P> eqNullable() { return isNullable(RelationalOperator.EQ); }
+		/**
+		 * Build a '<>' expression. If the right-hand side represents the {@code NULL} value, then the operator is automatically converted to {@code IS NOT}. 
+		 */
+		public ExpressionBuilder<P> notEqNullable() { return isNullable(RelationalOperator.NOT_EQ); }
 		/**
 		 * Build a '>' expression. 
 		 */
@@ -972,12 +1044,12 @@ public class SqlBuilder {
 		}
 
 		public P isNull() {
-			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS, new SqlRaw("null"));
+			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS, SqlFragment.nullLiteral);
 			return parent;
 		}
 
 		public P isNotNull() {
-			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS_NOT, new SqlRaw("null"));
+			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS_NOT, SqlFragment.nullLiteral);
 			return parent;
 		}
 
@@ -1525,8 +1597,8 @@ public class SqlBuilder {
 			w.append(")");
 			w.appendln();
 			w.append("values (");
-			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql).collect(
-					Collectors.joining(", ")));
+			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql)
+					.collect(Collectors.joining(", ")));
 			w.append(")");
 		}
 
@@ -1716,43 +1788,49 @@ public class SqlBuilder {
 			return res;
 		}
 
+		private List<SqlMergeClause> getInsertClauses() {
+			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
+					.collect(Collectors.toList());
+		}
+
+		private List<SqlMergeClause> getUpdateClauses() {
+			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
+					.collect(Collectors.toList());
+		}
+
+		private Condition getOnCondition() {
+			final List<Condition> onClauses = setClauses.stream()
+					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE))
+					.map(c -> new SimpleConditionBuilder(new SqlRaw(c.getColumnName()), RelationalOperator.EQ,
+							c.getValue(), true))
+					.collect(Collectors.toList());
+			return new CompositeConditionBuilder(onClauses, LogicalOperator.AND);
+		}
+
 		@Override
 		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final List<SqlMergeClause> onClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE))
-					.collect(Collectors.toList());
-			final List<SqlMergeClause> updateClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
-					.collect(Collectors.toList());
-			final List<SqlMergeClause> insertClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
-					.collect(Collectors.toList());
+			final Condition onCondition = getOnCondition();
+			final List<SqlMergeClause> updateClauses = getUpdateClauses();
+			final List<SqlMergeClause> insertClauses = getInsertClauses();
 
-			final CompositeIterator<SqlMergeClause> it = new CompositeIterator<>(
-					Arrays.asList(onClauses.iterator(), updateClauses.iterator(), insertClauses.iterator()));
-			while (it.hasNext()) {
-				it.next().bind(ps, index);
+			onCondition.bind(ps, index);
+			for (final SqlMergeClause c : updateClauses) {
+				c.bind(ps, index);
+			}
+			for (final SqlMergeClause c : insertClauses) {
+				c.bind(ps, index);
 			}
 		}
 
 		@Override
 		public void appendTo(SqlStringBuilder w) {
-			final List<SqlMergeClause> onClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE))
-					.collect(Collectors.toList());
-			final List<SqlMergeClause> updateClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
-					.collect(Collectors.toList());
-			final List<SqlMergeClause> insertClauses = setClauses.stream()
-					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
-					.collect(Collectors.toList());
+			final Condition onCondition = getOnCondition();
+			final List<SqlMergeClause> updateClauses = getUpdateClauses();
+			final List<SqlMergeClause> insertClauses = getInsertClauses();
 
 			w.append("merge into ").append(tableName).appendln(" using dual on (");
 			w.increaseIndent();
-			forEach_endAware(onClauses, (clause, first, last) -> {
-				if (!first) w.append("and ");
-				w.appendln(clause);
-			});
+			w.appendln(onCondition);
 			w.decreaseIndent();
 			w.appendln(")");
 			if (!updateClauses.isEmpty()) {
@@ -1767,11 +1845,10 @@ public class SqlBuilder {
 			w.append("when not matched then insert (");
 			w.append(insertClauses.stream().map(SqlMergeClause::getColumnName).collect(Collectors.joining(", ")));
 			w.append(") values (");
-			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql).collect(
-					Collectors.joining(", ")));
+			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql)
+					.collect(Collectors.joining(", ")));
 			w.append(")");
 		}
-
 	}
 
 	@FunctionalInterface
