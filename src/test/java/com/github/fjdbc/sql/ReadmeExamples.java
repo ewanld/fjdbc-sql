@@ -123,19 +123,17 @@ public class ReadmeExamples {
 		// Batch statement with input data coming from a Collection
 		{
 			final List<String> values = Arrays.asList("SALES", "ACCOUNTING");
-			final List<SqlInsertBuilder> inserts = values.stream().map(ReadmeExamples::createInsertStatement)
-					.collect(Collectors.toList());
+			final List<SqlInsertBuilder> inserts = values.stream().map(ReadmeExamples::createInsertStatement).collect(
+					Collectors.toList());
 			sql.batchStatement(inserts).executeAndCommit();
 		}
 
 		// Batch statement with input data coming from a Stream
 		{
-			final Stream<SqlInsertBuilder> stream = Files.lines(Paths.get("c:/my/file.txt"))
-					.map(ReadmeExamples::createInsertStatement);
-			// the empty string is used to generate the SQL, but anything else would
-			// have been fine since we are dealing with a prepared statement.
-			final String sqlString = createInsertStatement("").getSql();
-			sql.batchStatement(sqlString, stream).toStatement().executeAndCommit();
+			try (final Stream<SqlInsertBuilder> stream = Files.lines(Paths.get("c:/my/file.txt"))
+					.map(ReadmeExamples::createInsertStatement)) {
+				sql.batchStatement(stream).executeAndCommit();
+			}
 		}
 	}
 

@@ -16,16 +16,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.github.fjdbc.ConnectionProvider;
 import com.github.fjdbc.IntSequence;
 import com.github.fjdbc.PreparedStatementBinder;
-import com.github.fjdbc.RuntimeSQLException;
 import com.github.fjdbc.internal.PreparedStatementEx;
 import com.github.fjdbc.internal.StatementOperationImpl;
 import com.github.fjdbc.op.StatementOperation;
@@ -323,30 +319,30 @@ public class SqlBuilder {
 	 * Build a batch statement. The batch statement is initially empty; statements must be added with the
 	 * {@link BatchStatementBuilder#addStatement} method.
 	 */
-	public BatchStatementBuilder batchStatement() {
+	public BatchStatementBuilder batch() {
 		return new BatchStatementBuilder();
 	}
 
 	/**
-	 * Build a batch statement using the specified statements.
+	 * Build a batch statement from an SQL string and a stream of prepared statement binders.
 	 */
-	public StatementOperation batchStatement(Collection<? extends SqlStatement> statements) {
-		return new BatchStatementBuilder(statements).toStatement();
+	public <T extends SqlFragment> BatchStatementOperation<T> batchStatement(Stream<T> statements,
+			long executeEveryNRow, long commitEveryNRow) {
+		return new BatchStatementOperation<>(cnxProvider, statements, executeEveryNRow, commitEveryNRow);
 	}
 
 	/**
 	 * Build a batch statement from an SQL string and a stream of prepared statement binders.
 	 */
-	public <T extends PreparedStatementBinder> SqlStatement batchStatement(String sql, Stream<T> statements) {
-		return new StreamBackedBatchStatement<>(sql, statements, -1, -1);
+	public <T extends SqlFragment> BatchStatementOperation<T> batchStatement(Stream<T> statements) {
+		return batchStatement(statements, -1, -1);
 	}
 
 	/**
 	 * Build a batch statement from an SQL string and a stream of prepared statement binders.
 	 */
-	public <T extends PreparedStatementBinder> StreamBackedBatchStatement<T> batchStatement(String sql,
-			Stream<T> statements, long executeEveryNRow, long commitEveryNRow) {
-		return new StreamBackedBatchStatement<>(sql, statements, executeEveryNRow, commitEveryNRow);
+	public <T extends SqlFragment> BatchStatementOperation<T> batchStatement(Collection<T> statements) {
+		return batchStatement(statements.stream(), -1, -1);
 	}
 
 	public enum RelationalOperator implements SqlFragment {
@@ -1030,7 +1026,7 @@ public class SqlBuilder {
 	}
 
 	public abstract class SqlStatement implements SqlFragment {
-		public final StatementOperation toStatement() {
+		public StatementOperation toStatement() {
 			return new StatementOperationImpl(cnxProvider, getSql(), this);
 		}
 	}
@@ -1827,7 +1823,7 @@ public class SqlBuilder {
 	 * <p>
 	 * At the moment, there is no check to actually make sure the SQL is the same. This may change in the future.
 	 */
-	public class BatchStatementBuilder extends SqlStatement {
+	public class BatchStatementBuilder {
 		private final Collection<SqlStatement> statements;
 		private long executeEveryNRow = -1;
 		private long commitEveryNRow = -1;
@@ -1850,105 +1846,17 @@ public class SqlBuilder {
 			this.statements = new ArrayList<>(statements);
 		}
 
-		public void addStatement(SqlStatement statement) {
+		public void add(SqlStatement statement) {
 			statements.add(statement);
 		}
 
-		@Override
-		public void appendTo(SqlStringBuilder w) {
-			if (statements.isEmpty()) return;
-			statements.iterator().next().appendTo(w);
+		public void addAll(Collection<? extends SqlStatement> statements) {
+			this.statements.addAll(statements);
 		}
 
-		@Override
-		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final String sql = statements.iterator().next().getSql();
-			final StreamBackedBatchStatement<SqlStatement> wrapped = new StreamBackedBatchStatement<>(sql,
-					statements.stream(), executeEveryNRow, commitEveryNRow);
-			wrapped.bind(ps, index);
-		}
-
-	}
-
-	/**
-	 * Create a batch statement from an SQL string and a stream of prepared statement binders.
-	 */
-	public class StreamBackedBatchStatement<T extends PreparedStatementBinder> extends SqlStatement {
-		private final Stream<T> statements;
-		private final String sql;
-		private final long executeEveryNRow;
-		private final long commitEveryNRow;
-		private BiConsumer<SQLException, T> errorHandler = (e, statement) -> {
-			throw new RuntimeSQLException(e);
-		};
-		private AtomicBoolean cancelRequested = new AtomicBoolean();
-
-		public StreamBackedBatchStatement(String sql, Stream<T> statements, final long executeEveryNRow,
-				final long commitEveryNRow) {
-			this.sql = sql;
-			this.statements = statements;
-			this.executeEveryNRow = executeEveryNRow;
-			this.commitEveryNRow = commitEveryNRow;
-		}
-
-		public StreamBackedBatchStatement<T> setErrorHandler(BiConsumer<SQLException, T> errorHandler) {
-			this.errorHandler = errorHandler;
-			return this;
-		}
-
-		@Override
-		public void appendTo(SqlStringBuilder w) {
-			w.append(sql);
-		}
-
-		/**
-		 * {@code cancelRequested} is an {@code AtomicBoolean} instance that allows to cancel the execution from a
-		 * different thread.<br>
-		 * If not set, an instance is provided by default.
-		 */
-		public void setCancelRequestAtomicBoolean(AtomicBoolean cancelRequested) {
-			this.cancelRequested = cancelRequested;
-		}
-
-		/**
-		 * Request the cancellation of this statement.
-		 * This method is thread-safe.
-		 */
-		public void cancel() {
-			cancelRequested.set(true);
-		}
-
-		@Override
-		public void bind(PreparedStatement ps, IntSequence index) throws SQLException {
-			final IntSequence count = new IntSequence(0);
-			try {
-				statements.forEachOrdered(s -> {
-					try {
-						s.bind(ps, index);
-						ps.addBatch();
-						count.next();
-						if (cancelRequested.get()) {
-							cnxProvider.rollback(ps.getConnection());
-							throw new CancellationException();
-						}
-						if (executeEveryNRow > 0 && (count.get() % executeEveryNRow) == 0) {
-							ps.executeBatch();
-						}
-						if (commitEveryNRow > 0 && (count.get() % commitEveryNRow) == 0) {
-							cnxProvider.commit(ps.getConnection());
-						}
-					} catch (final SQLException e) {
-						errorHandler.accept(e, s);
-					} finally {
-						index.reset();
-					}
-				});
-			} catch (final Exception e) {
-				if (!(e instanceof CancellationException)) {
-					throw e;
-				}
-			}
-
+		public BatchStatementOperation<SqlStatement> toStatement() {
+			return new BatchStatementOperation<>(cnxProvider, statements.stream(), executeEveryNRow,
+					commitEveryNRow);
 		}
 	}
 
