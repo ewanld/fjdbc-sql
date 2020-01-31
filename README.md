@@ -13,7 +13,7 @@ Latest version: 0.1.0.
 ```java
 final Connection cnx = DriverManager.getConnection("/jdbc/url");
 final SingleConnectionProvider provider = new SingleConnectionProvider(cnx);
-final StandardSql sql = new StandardSql(provider);
+final SqlBuilder sql = new SqlBuilder(provider);
 
 ```
 
