@@ -10,8 +10,9 @@ import java.util.Collections;
 import java.util.GregorianCalendar;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
+import org.junit.Test;
 
-import com.github.fjdbc.sql.SqlBuilder;
 import com.github.fjdbc.sql.SqlBuilder.Placement;
 import com.github.fjdbc.sql.SqlBuilder.SqlFragment;
 import com.github.fjdbc.sql.SqlBuilder.SqlSelectClause;
@@ -152,12 +153,14 @@ public class SqlBuilderTest {
 		writer.write("\n\n");
 	}
 
+	@Test
 	public void testAll() throws IOException {
 		writeSql();
 		writer.flush();
 		assert FileUtils.contentEquals(last, ref);
 	}
 
+	@After
 	public void tearDown() throws IOException {
 		writer.close();
 	}
