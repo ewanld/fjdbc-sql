@@ -162,9 +162,11 @@ public class BatchStatementOperation<T extends SqlFragment> implements Statement
 	}
 
 	/**
-	 * {@code cancelRequested} is an {@code AtomicBoolean} instance that allows to cancel the execution from a
-	 * different thread.<br>
+	 * {@code cancelRequested} is an {@link AtomicBoolean} instance that allows to cancel the execution from a
+	 * different thread.
+	 * <p>
 	 * If not set, an instance is provided by default.
+	 * @param cancelRequested the {@link AtomicBoolean} reference.
 	 */
 	public void setCancelRequestAtomicBoolean(AtomicBoolean cancelRequested) {
 		this.cancelRequested = cancelRequested;

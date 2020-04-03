@@ -328,7 +328,7 @@ public class SqlBuilder {
 
 	/**
 	 * Build a batch statement. The batch statement is initially empty; statements must be added with the
-	 * {@link BatchStatementBuilder#addStatement} method.
+	 * {@link BatchStatementBuilder#add} method.
 	 */
 	public BatchStatementBuilder batch() {
 		return new BatchStatementBuilder();
@@ -453,7 +453,7 @@ public class SqlBuilder {
 		public boolean representsNullValue() {
 			return sql.trim().equalsIgnoreCase("NULL");
 		}
-		
+
 		@Override
 		public String getSql() {
 			// as a small optimization, we provide the SQL directly since it is a constant value.
@@ -983,7 +983,7 @@ public class SqlBuilder {
 		 */
 		public ExpressionBuilder<P> eq() { return is(RelationalOperator.EQ); }
 		/**
-		 * Build a '<>' expression. 
+		 * Build a '&lt;&gt;' expression. 
 		 */
 		public ExpressionBuilder<P> notEq() { return is(RelationalOperator.NOT_EQ); }
 		/**
@@ -991,23 +991,23 @@ public class SqlBuilder {
 		 */
 		public ExpressionBuilder<P> eqNullable() { return isNullable(RelationalOperator.EQ); }
 		/**
-		 * Build a '<>' expression. If the right-hand side represents the {@code NULL} value, then the operator is automatically converted to {@code IS NOT}. 
+		 * Build a '&lt;&gt;' expression. If the right-hand side represents the {@code NULL} value, then the operator is automatically converted to {@code IS NOT}. 
 		 */
 		public ExpressionBuilder<P> notEqNullable() { return isNullable(RelationalOperator.NOT_EQ); }
 		/**
-		 * Build a '>' expression. 
+		 * Build a '&gt;' expression. 
 		 */
 		public ExpressionBuilder<P> gt() { return is(RelationalOperator.GT); }
 		/**
-		 * Build a '<' expression. 
+		 * Build a '&lt;' expression. 
 		 */
 		public ExpressionBuilder<P> lt() { return is(RelationalOperator.LT); }
 		/**
-		 * Build a '>=' expression. 
+		 * Build a '&gt;=' expression. 
 		 */
 		public ExpressionBuilder<P> gte() { return is(RelationalOperator.GTE); }
 		/**
-		 * Build a '<=' expression. 
+		 * Build a '&lt;=' expression. 
 		 */
 		public ExpressionBuilder<P> lte() { return is(RelationalOperator.LTE); }
 		// @formatter:on
@@ -1597,8 +1597,8 @@ public class SqlBuilder {
 			w.append(")");
 			w.appendln();
 			w.append("values (");
-			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql)
-					.collect(Collectors.joining(", ")));
+			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql).collect(
+					Collectors.joining(", ")));
 			w.append(")");
 		}
 
@@ -1789,13 +1789,13 @@ public class SqlBuilder {
 		}
 
 		private List<SqlMergeClause> getInsertClauses() {
-			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
-					.collect(Collectors.toList());
+			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(
+					Collectors.toList());
 		}
 
 		private List<SqlMergeClause> getUpdateClauses() {
-			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
-					.collect(Collectors.toList());
+			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(
+					Collectors.toList());
 		}
 
 		private Condition getOnCondition() {
@@ -1845,8 +1845,8 @@ public class SqlBuilder {
 			w.append("when not matched then insert (");
 			w.append(insertClauses.stream().map(SqlMergeClause::getColumnName).collect(Collectors.joining(", ")));
 			w.append(") values (");
-			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql)
-					.collect(Collectors.joining(", ")));
+			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql).collect(
+					Collectors.joining(", ")));
 			w.append(")");
 		}
 	}
@@ -1932,8 +1932,7 @@ public class SqlBuilder {
 		}
 
 		public BatchStatementOperation<SqlStatement> toStatement() {
-			return new BatchStatementOperation<>(cnxProvider, statements.stream(), executeEveryNRow,
-					commitEveryNRow);
+			return new BatchStatementOperation<>(cnxProvider, statements.stream(), executeEveryNRow, commitEveryNRow);
 		}
 	}
 
