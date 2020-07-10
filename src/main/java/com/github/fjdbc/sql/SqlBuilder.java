@@ -20,10 +20,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.github.fjdbc.ConnectionProvider;
+import com.github.fjdbc.Fjdbc;
 import com.github.fjdbc.IntSequence;
 import com.github.fjdbc.PreparedStatementBinder;
 import com.github.fjdbc.internal.PreparedStatementEx;
-import com.github.fjdbc.internal.StatementOperationImpl;
 import com.github.fjdbc.op.StatementOperation;
 import com.github.fjdbc.query.Query;
 import com.github.fjdbc.query.ResultSetExtractor;
@@ -127,15 +127,15 @@ public class SqlBuilder {
 	 * Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
 	private final boolean debug;
-	private final ConnectionProvider cnxProvider;
+	private final Fjdbc fjdbc;
 	private final SqlDialect dialect;
 
 	/**
 	 * @param cnxProvider
 	 *        The database connection provider.
 	 */
-	public SqlBuilder(ConnectionProvider cnxProvider) {
-		this(cnxProvider, SqlDialect.STANDARD, false);
+	public SqlBuilder(Fjdbc fjdbc) {
+		this(fjdbc, SqlDialect.STANDARD, false);
 	}
 
 	/**
@@ -144,8 +144,8 @@ public class SqlBuilder {
 	 * @param debug
 	 *        Debug statements by printing the value of prepared values in a comment next to the '?' placeholder.
 	 */
-	public SqlBuilder(ConnectionProvider cnxProvider, SqlDialect dialect, boolean debug) {
-		this.cnxProvider = cnxProvider;
+	public SqlBuilder(Fjdbc fjdbc, SqlDialect dialect, boolean debug) {
+		this.fjdbc = fjdbc;
 		this.dialect = dialect;
 		this.debug = debug;
 	}
@@ -229,7 +229,7 @@ public class SqlBuilder {
 	 */
 	public Condition bool(boolean value) {
 		final int value_int = value ? 1 : 0;
-		return new SimpleConditionBuilder(new SqlParameter<>(1, Integer.class), RelationalOperator.EQ,
+		return new SimpleCondition(new SqlParameter<>(1, Integer.class), RelationalOperator.EQ,
 				new SqlParameter<>(value_int, Integer.class));
 	}
 
@@ -339,7 +339,7 @@ public class SqlBuilder {
 	 */
 	public <T extends SqlFragment> BatchStatementOperation<T> batchStatement(Stream<T> statements,
 			long executeEveryNRow, long commitEveryNRow) {
-		return new BatchStatementOperation<>(cnxProvider, statements, executeEveryNRow, commitEveryNRow);
+		return fjdbc.batchStatement(statements, executeEveryNRow, commitEveryNRow);
 	}
 
 	/**
@@ -419,7 +419,6 @@ public class SqlBuilder {
 		public void appendTo(SqlStringBuilder w) {
 			w.append(sql);
 		}
-
 	}
 
 	public static class SqlRaw implements SqlFragment, Condition {
@@ -824,17 +823,21 @@ public class SqlBuilder {
 		}
 	}
 
-	public static class SimpleConditionBuilder implements Condition {
+	/**
+	 * A simple condition, i.e a condition of the form: {@code A <op> B}, where {@code op} is an operator
+	 * ({@code =}, {@code <}, {@code IS}, etc.)
+	 */
+	public static class SimpleCondition implements Condition {
 		private SqlFragment rhs;
 		private RelationalOperator operator;
 		private final SqlFragment lhs;
 		private boolean fixNullRhs;
 
-		public SimpleConditionBuilder(SqlFragment lhs, RelationalOperator operator, SqlFragment rhs) {
+		public SimpleCondition(SqlFragment lhs, RelationalOperator operator, SqlFragment rhs) {
 			this(lhs, operator, rhs, false);
 		}
 
-		public SimpleConditionBuilder(SqlFragment lhs, RelationalOperator operator, SqlFragment rhs,
+		public SimpleCondition(SqlFragment lhs, RelationalOperator operator, SqlFragment rhs,
 				boolean fixNullRhs) {
 			this.lhs = lhs;
 			this.rhs = rhs;
@@ -924,7 +927,6 @@ public class SqlBuilder {
 				if (conditions.size() > 1) w.append(")");
 			}
 		}
-
 	}
 
 	public static class NotCondition implements Condition {
@@ -948,7 +950,6 @@ public class SqlBuilder {
 			w.decreaseIndent();
 			w.append(")");
 		}
-
 	}
 
 	public class ConditionBuilder<P> implements Condition {
@@ -967,13 +968,13 @@ public class SqlBuilder {
 
 		public ExpressionBuilder<P> is(RelationalOperator _operator) {
 			final ExpressionBuilder<P> rhs = new ExpressionBuilder<>(parent);
-			currentCondition = new SimpleConditionBuilder(lhs, _operator, rhs);
+			currentCondition = new SimpleCondition(lhs, _operator, rhs);
 			return rhs;
 		}
 
 		private ExpressionBuilder<P> isNullable(RelationalOperator _operator) {
 			final ExpressionBuilder<P> rhs = new ExpressionBuilder<>(parent);
-			currentCondition = new SimpleConditionBuilder(lhs, _operator, rhs, true);
+			currentCondition = new SimpleCondition(lhs, _operator, rhs, true);
 			return rhs;
 		}
 
@@ -1044,25 +1045,25 @@ public class SqlBuilder {
 		}
 
 		public P isNull() {
-			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS, SqlFragment.nullLiteral);
+			currentCondition = new SimpleCondition(lhs, RelationalOperator.IS, SqlFragment.nullLiteral);
 			return parent;
 		}
 
 		public P isNotNull() {
-			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.IS_NOT, SqlFragment.nullLiteral);
+			currentCondition = new SimpleCondition(lhs, RelationalOperator.IS_NOT, SqlFragment.nullLiteral);
 			return parent;
 		}
 
 		public P like(String text, char escapeChar) {
 			// TODO use placeholder instead
-			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.LIKE,
+			currentCondition = new SimpleCondition(lhs, RelationalOperator.LIKE,
 					new SqlRaw(SqlUtils.escapeLikeString(text, escapeChar) + "'"));
 			return parent;
 		}
 
 		public P like(String text) {
 			// TODO use placeholder instead
-			currentCondition = new SimpleConditionBuilder(lhs, RelationalOperator.LIKE,
+			currentCondition = new SimpleCondition(lhs, RelationalOperator.LIKE,
 					new SqlRaw(SqlUtils.toLiteralString(text)));
 			return parent;
 		}
@@ -1099,7 +1100,7 @@ public class SqlBuilder {
 
 	public abstract class SqlStatement implements SqlFragment {
 		public StatementOperation toStatement() {
-			return new StatementOperationImpl(cnxProvider, getSql(), this);
+			return fjdbc.statement(getSql(), this);
 		}
 	}
 
@@ -1185,7 +1186,7 @@ public class SqlBuilder {
 
 	public abstract class SqlSelectStatement implements SqlFragment {
 		public <T> Query<T> toQuery(ResultSetExtractor<T> extractor) {
-			return new Query<>(cnxProvider, getSql(), this, extractor);
+			return fjdbc.query(getSql(), this, extractor);
 		}
 	}
 
@@ -1355,7 +1356,10 @@ public class SqlBuilder {
 
 		public SqlSelectBuilder where(Condition condition) {
 			if (condition == null) throw new IllegalArgumentException();
-			whereClauses.add(condition);
+			// we enclose raw SQL in parentheses in case it represents a compound expression
+			final boolean parens = condition instanceof SqlRaw;
+			final SqlFragment _condition = parens ? SqlFragment.wrapInParentheses(condition, false) : condition;
+			whereClauses.add(_condition);
 			return this;
 		}
 
@@ -1597,8 +1601,8 @@ public class SqlBuilder {
 			w.append(")");
 			w.appendln();
 			w.append("values (");
-			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql).collect(
-					Collectors.joining(", ")));
+			w.append(setClauses.stream().map(SetValueClause::getValue).map(SqlFragment::getSql)
+					.collect(Collectors.joining(", ")));
 			w.append(")");
 		}
 
@@ -1789,19 +1793,19 @@ public class SqlBuilder {
 		}
 
 		private List<SqlMergeClause> getInsertClauses() {
-			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE)).collect(
-					Collectors.toList());
+			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.INSERT_CLAUSE))
+					.collect(Collectors.toList());
 		}
 
 		private List<SqlMergeClause> getUpdateClauses() {
-			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE)).collect(
-					Collectors.toList());
+			return setClauses.stream().filter(c -> c.getFlags().contains(SqlMergeClauseFlag.UPDATE_CLAUSE))
+					.collect(Collectors.toList());
 		}
 
 		private Condition getOnCondition() {
 			final List<Condition> onClauses = setClauses.stream()
 					.filter(c -> c.getFlags().contains(SqlMergeClauseFlag.ON_CLAUSE))
-					.map(c -> new SimpleConditionBuilder(new SqlRaw(c.getColumnName()), RelationalOperator.EQ,
+					.map(c -> new SimpleCondition(new SqlRaw(c.getColumnName()), RelationalOperator.EQ,
 							c.getValue(), true))
 					.collect(Collectors.toList());
 			return new CompositeConditionBuilder(onClauses, LogicalOperator.AND);
@@ -1845,8 +1849,8 @@ public class SqlBuilder {
 			w.append("when not matched then insert (");
 			w.append(insertClauses.stream().map(SqlMergeClause::getColumnName).collect(Collectors.joining(", ")));
 			w.append(") values (");
-			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql).collect(
-					Collectors.joining(", ")));
+			w.append(insertClauses.stream().map(SqlMergeClause::getValue).map(SqlFragment::getSql)
+					.collect(Collectors.joining(", ")));
 			w.append(")");
 		}
 	}
@@ -1932,7 +1936,7 @@ public class SqlBuilder {
 		}
 
 		public BatchStatementOperation<SqlStatement> toStatement() {
-			return new BatchStatementOperation<>(cnxProvider, statements.stream(), executeEveryNRow, commitEveryNRow);
+			return fjdbc.batchStatement(statements.stream(), executeEveryNRow, commitEveryNRow);
 		}
 	}
 
@@ -1944,6 +1948,6 @@ public class SqlBuilder {
 	}
 
 	public ConnectionProvider getConnectionProvider() {
-		return cnxProvider;
+		return fjdbc.getConnectionProvider();
 	}
 }
